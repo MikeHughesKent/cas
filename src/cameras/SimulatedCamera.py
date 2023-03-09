@@ -100,7 +100,17 @@ class SimulatedCamera(GenericCameraInterface):
            self.currentFrame = self.currentFrame + 1
         
       
-           
+       currentTime = time.perf_counter()
+       if self.fps > 0:
+           desiredWait = 1/self.fps
+           waitNeeded = desiredWait - (currentTime - self.lastImageTime)
+           #print("Rate ", currentTime - self.lastImageTime)
+           #print("Desired Rate, ", desiredWait )
+           #print("Wait Needed ", waitNeeded)
+    
+           if waitNeeded > 0:
+               time.sleep(waitNeeded)
+       
        self.actualFrameRate = 1/(time.perf_counter() - self.lastImageTime)     
        self.lastImageTime = time.perf_counter() 
 

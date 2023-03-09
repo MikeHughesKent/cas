@@ -54,9 +54,9 @@ from FileInterface import FileInterface
 
 from DummyThread import DummyThread
 
-
 from datetime import datetime
 
+from threading import Lock
 cuda = True
 
 
@@ -100,7 +100,9 @@ class CAS_GUI(QMainWindow):
         super(CAS_GUI, self).__init__(parent)
 
         self.create_layout()
-        self.create_timers()        
+        self.create_timers()  
+        
+        self.acquisitionLock = Lock()
     
         # Load last values for GUI from registry
         self.settings = QtCore.QSettings(self.authorName, self.appName)  
@@ -111,6 +113,7 @@ class CAS_GUI(QMainWindow):
         #self.apply_default_settings()
 
         self.move(0,0)
+        #self.lock = threading.Lock()
         self.handle_cam_source_change()
         
         
@@ -125,6 +128,7 @@ class CAS_GUI(QMainWindow):
         # Create timer for GUI updates
         self.GUITimer=QTimer()
         self.GUITimer.timeout.connect(self.update_GUI)
+        
         
         # Create timer for image processing
         self.imageTimer=QTimer()
@@ -305,14 +309,14 @@ class CAS_GUI(QMainWindow):
             # If we are using a simulated camera, ask for a file if not hard-coded
             if self.sourceFilename is None:
                 self.sourceFilename = QFileDialog.getOpenFileName(filter  = '*.tif')[0]
-
-            self.imageThread = ImageAcquisitionThread('SimulatedCamera', self.rawImageBufferSize, filename=self.sourceFilename )
+                
+            self.imageThread = ImageAcquisitionThread('SimulatedCamera', self.rawImageBufferSize, self.acquisitionLock, filename=self.sourceFilename)
             #self.imageThread = ImageAcquisitionHandler('SimulatedCamera', self.rawImageBufferSize, filename=self.sourceFilename )
             
             self.cam = self.imageThread.get_camera()
             self.cam.pre_load(-1)
         else:
-            self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize)
+            self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock)
             #self.imageThread = ImageAcquisitionHandler(self.camSource, self.rawImageBufferSize)
 
         self.create_processors()    
@@ -322,6 +326,9 @@ class CAS_GUI(QMainWindow):
         if self.cam is not None:
             self.camOpen = True
             self.update_camera_ranges()
+            self.update_camera_from_GUI()
+            self.update_camera_ranges()
+
             self.update_image_display()
             
             # Start the camera image acquirer  

@@ -337,7 +337,6 @@ class CAS_GUI_Bundle(CAS_GUI):
 
     def update_image_display(self):
         """ Overrides from base class to include mosaicing window"""
-
         if self.bundleShowRaw.isChecked():
            if self.currentImage is not None:
                self.mainDisplay.set_mono_image(self.currentImage)
@@ -374,7 +373,6 @@ class CAS_GUI_Bundle(CAS_GUI):
                 self.imageProcessor.crop = None
                 
             self.imageProcessor.pyb.set_bundle_loc((self.bundleCentreXInput.value(), self.bundleCentreYInput.value(), self.bundleRadiusInput.value()))
-            self.imageProcessor.pyb.set_output_type('uint8')
             self.imageProcessor.pyb.set_crop(self.bundleCropCheck.isChecked())
             self.imageProcessor.pyb.set_auto_contrast(False)
             if self.bundleMaskCheck.isChecked():
@@ -382,12 +380,15 @@ class CAS_GUI_Bundle(CAS_GUI):
             else:
                 self.imageProcessor.pyb.set_mask(None)
                 
-            if self.bundleSubtractBackCheck.isChecked() and self.backgroundImage is not None:
-                self.imageProcessor.pyb.set_background(self.backgroundImage)
+            if self.bundleSubtractBackCheck.isChecked():
+                if self.backgroundImage is not None:
+                    self.imageProcessor.pyb.set_background(self.backgroundImage)
             else:
                 self.imageProcessor.pyb.set_background(None)
+                
             if self.bundleNormaliseCheck.isChecked():
-                self.imageProcessor.pyb.set_normalise_image(self.backgroundImage)    
+                if self.backgroundImage is not None:
+                    self.imageProcessor.pyb.set_normalise_image(self.backgroundImage)    
             else:
                 self.imageProcessor.pyb.set_normalise_image(None)
     
@@ -413,6 +414,7 @@ class CAS_GUI_Bundle(CAS_GUI):
              
                              
     def handle_calibrate(self):
+        
         if self.backgroundImage is not None and self.imageProcessor is not None:
             
             QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -435,7 +437,6 @@ class CAS_GUI_Bundle(CAS_GUI):
         with open('calib.dat', 'rb') as pickleFile:
             self.imageProcessor.pyb.calibration = pickle.load(pickleFile)
         self.handle_changed_bundle_processing()
-   
         
     def handle_reset_mosaic(self):
         self.imageProcessor.mosaic.reset()

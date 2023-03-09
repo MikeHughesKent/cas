@@ -17,6 +17,7 @@ import threading
 import time
 import logging
 import multiprocessing
+import numpy as np
 
 class ImageProcessorThread(threading.Thread):
     
@@ -31,6 +32,7 @@ class ImageProcessorThread(threading.Thread):
         self.inBufferSize = inBufferSize
         self.outBufferSize = outBufferSize
         self.inputQueue = kwargs.get('inputQueue', None)
+        self.acquisitionLock = kwargs.get('acquisitionLock', None)
         if self.inputQueue is None:
             self.inputQueue = queue.Queue(maxsize=self.inBufferSize)
         #self.inputQueue = queue.Queue(maxsize=self.inBufferSize)
@@ -45,26 +47,49 @@ class ImageProcessorThread(threading.Thread):
         self.currentFrameNumber = 0
         self.isPaused = False
         self.isStarted = True
+        self.batchProcessNum = 1
         
     
         
     # This loop is run once the thread starts
     def run(self):
+        
+        
 
          while self.isStarted:
              
              if not self.isPaused:
+                 
+                 self.handle_flags() 
+
 
                  # Stop output queue overfilling
                  if self.outputQueue.full():
-                     temp = self.outputQueue.get()
+                     for i in range(self.batchProcessNum):
+                         temp = self.outputQueue.get()
                      
-                 if self.get_num_images_in_input_queue() > 0:
+                 # Check we have got at least as many images as we intend to batch process  
+                # print(self.get_num_images_in_input_queue(), " in queue")
+                # print(self.batchProcessNum)
+                 if self.get_num_images_in_input_queue() >= self.batchProcessNum:
+                     if self.acquisitionLock is not None: self.acquisitionLock.acquire()
                      try:
-                         self.currentInputImage = self.inputQueue.get()
-                         self.currentOutputImage = self.process_frame(self.currentInputImage)
-                         self.outputQueue.put(self.currentOutputImage)
-                    
+
+                         if self.batchProcessNum > 1:
+                             img = self.inputQueue.get()
+                             self.currentInputImage = np.zeros((np.shape(img)[0], np.shape(img)[1], self.batchProcessNum))
+                             self.currentInputImage[:,:,0] = img
+                             for i in range(1, self.batchProcessNum):
+                                 self.currentInputImage[:,:,i] = self.inputQueue.get()
+                             self.currentOutputImage = self.process_frame(self.currentInputImage)
+                             self.outputQueue.put(self.currentOutputImage)
+
+
+                         else:
+                             self.currentInputImage = self.inputQueue.get()
+                             self.currentOutputImage = self.process_frame(self.currentInputImage)
+                             self.outputQueue.put(self.currentOutputImage)
+                     
                          # Timing
                          self.currentFrameNumber = self.currentFrameNumber + 1
                          self.currentFrameTime = time.perf_counter()
@@ -73,11 +98,13 @@ class ImageProcessorThread(threading.Thread):
                  
                      except queue.Empty:
                          print("No image in queue")
+                     
+                     if self.acquisitionLock is not None: self.acquisitionLock.release()
+
                  else:
                      time.sleep(0.01)
                
                 
-                 self.handle_flags() 
     
      
     ######### Override to provide code for processing the input frame
@@ -165,12 +192,14 @@ class ImageProcessorThread(threading.Thread):
         with self.inputQueue.mutex:
             self.inputQueue.queue.clear()
             
-   
+            
+    def set_batch_process_num(self, num):
+        self.batchProcessNum = num
+        
     
     def flush_output_buffer(self):
         with self.outputQueue.mutex:
-            self.outputQueue.queue.clear()
-    
+            self.outputQueue.queue.clear()    
    
             
     def pause(self):

@@ -17,14 +17,14 @@ import multiprocessing as mp
 
 class ImageAcquisitionThread(threading.Thread):
     
-    def __init__(self, camName, bufferSize, **camArgs):
+    def __init__(self, camName, bufferSize, acquisitionLock, **camArgs):
         
         # Caller passes the name of the camera class (which should be in a
         # module of the same name) in the variable camName. This is dynamically
         # imported here and an instance created as self.cam.
         camModule = __import__(camName)
         self.cam = getattr(camModule, camName)(**camArgs)
-        
+        self.acquisitionLock = acquisitionLock
         super().__init__()
                 
         self.cam.open_camera(0)
@@ -40,6 +40,8 @@ class ImageAcquisitionThread(threading.Thread):
         self.currentFrameNumber = 0
         self.isPaused = False
         self.isOpen = True
+        
+        self.numRemoveWhenFull = 1
         
     def get_camera(self):
         return self.cam
@@ -71,9 +73,14 @@ class ImageAcquisitionThread(threading.Thread):
     def get_next_image_wait(self):
         
         while self.is_image_ready() is False:
+            print(self.is_image_ready())
+
             pass
         try:
+            if self.acquisitionLock is not None: self.acquisitionLock.acquire()
             im = self.imageQueue.get()
+            if self.acquisitionLock is not None: self.acquisitionLock.release()
+
         except queue.Empty:
             print("Error - no image")
             return None
@@ -84,6 +91,7 @@ class ImageAcquisitionThread(threading.Thread):
     def get_inter_frame_time(self):
         return self.frameStepTime
     
+    
     def get_actual_fps(self):
         if self.frameStepTime > 0:
             return (1 / self.frameStepTime)
@@ -92,6 +100,9 @@ class ImageAcquisitionThread(threading.Thread):
         
     def get_latest_image(self):
         return self.currentFrame
+    
+    def set_num_removal_when_full(self, num):
+        self.numRemoveWhenFull = num
     
     
     def flush_buffer(self):
@@ -106,25 +117,28 @@ class ImageAcquisitionThread(threading.Thread):
         while self.isOpen:            
 
             if not self.isPaused:
+                
+                # Handles full queue
                 if self.imageQueue.full():
-                    if self.imageQueue.qsize() > 0:
-                        temp = self.imageQueue.get()
-                    if self.imageQueue.qsize() > 0:
-                        temp = self.imageQueue.get()
+                    if self.acquisitionLock is not None: self.acquisitionLock.acquire()
 
-                    t1 = time.time()
-                t1 = time.perf_counter()    
+                    for idx in range(self.numRemoveWhenFull):
+                        if self.imageQueue.qsize() > 0:
+                            temp = self.imageQueue.get()
+                           
+                    if self.acquisitionLock is not None: self.acquisitionLock.release()
+
                 frame = self.cam.get_image()
-                #print("Get image time: " + str(time.perf_counter() - t1))
-                #
+
                 if frame is not None:
+                    #print("running")
                     self.currentFrameNumber = self.currentFrameNumber + 1
                     self.imageQueue.put(frame)
                     self.currentFrame = frame
                     self.currentFrameTime = time.perf_counter()
                     self.frameStepTime = self.currentFrameTime - self.lastFrameTime
                     self.lastFrameTime = self.currentFrameTime
-                    #print(self.frameStepTime)
+
                 
     def pause(self):
         self.isPaused = True

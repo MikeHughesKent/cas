@@ -65,7 +65,7 @@ class BundleProcessor(ImageProcessorThread):
         outputFrame = self.pyb.process(outputFrame)
         #print("Proc:" + str(time.perf_counter() - t1))
         #self.preProcessFrame = outputFrame
-        print(self.mosaicing)
+        #print(self.mosaicing)
         if self.mosaicing:
             self.mosaic.add(outputFrame)
     
