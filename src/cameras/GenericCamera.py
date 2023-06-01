@@ -32,9 +32,25 @@ class GenericCameraInterface:
     
     
     
+    ##### Parameter Value Setting    
+    def get_nodes(self):
+        return None
+                
+    def get_values(self, nodeName):
+        return None
+        
+    def set_value(self, nodeName, value):
+        return False
+    
+    def get_value(self, nodeName):
+        return None
+                    
+    def get_nodes(self):
+        return None
+
+    
     
     ###### Frame Rate
-
     def set_frame_rate_on(self):
         return None        
 
@@ -82,7 +98,10 @@ class GenericCameraInterface:
     def get_gain_range(self):
         return None 
         
-      
+    ##### Trigger
+    
+    def set_trigger_mode(self, triggerMode):
+        pass
         
     def set_image(self):
         pass

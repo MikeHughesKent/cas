@@ -14,8 +14,37 @@ import PySpin
 
 import time
 
+import warnings
+
        
+
+
+
 class FleaCameraInterface(GenericCameraInterface):
+    
+    _rw_modes = {
+        PySpin.RO: "read only",
+        PySpin.RW: "read/write",
+        PySpin.WO: "write only",
+        PySpin.NA: "not available"
+    }
+
+    _attr_types = {
+        PySpin.intfIFloat: PySpin.CFloatPtr,
+        PySpin.intfIBoolean: PySpin.CBooleanPtr,
+        PySpin.intfIInteger: PySpin.CIntegerPtr,
+        PySpin.intfIEnumeration: PySpin.CEnumerationPtr,
+        PySpin.intfIString: PySpin.CStringPtr,
+    }
+
+    _attr_type_names = {
+        PySpin.intfIFloat: 'float',
+        PySpin.intfIBoolean: 'bool',
+        PySpin.intfIInteger: 'int',
+        PySpin.intfIEnumeration: 'enum',
+        PySpin.intfIString: 'string',
+        PySpin.intfICommand: 'command',
+    }
     
     def __init__(self):        
         self.system = PySpin.System.GetInstance()
@@ -35,38 +64,12 @@ class FleaCameraInterface(GenericCameraInterface):
             
             self.cam = self.cams[camID]
             
-            # Retrieve TL device nodemap and print device information
-            nodemap_tldevice = self.cam.GetTLDeviceNodeMap()
-    
-            #result &= FleaCamera.print_device_info(nodemap_tldevice)
-    
-            # Initialize camera
+                       # Initialize camera
             self.cam.Init()
     
-            # Retrieve GenICam nodemap
-            nodemap = self.cam.GetNodeMap()
+            self.set_value('AcquisitionMode', 'Continuous')
             
-            nodemap_tldevice = self.cam.GetTLDeviceNodeMap()    
-            
-            node_acquisition_mode = PySpin.CEnumerationPtr(nodemap.GetNode('AcquisitionMode'))
-            if not PySpin.IsAvailable(node_acquisition_mode) or not PySpin.IsWritable(node_acquisition_mode):
-                print('Unable to set acquisition mode to continuous (enum retrieval). Aborting...')
-                return False
-    
-            # Retrieve entry node from enumeration node
-            node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName('Continuous')
-            if not PySpin.IsAvailable(node_acquisition_mode_continuous) or not PySpin.IsReadable(node_acquisition_mode_continuous):
-                print('Unable to set acquisition mode to continuous (entry retrieval). Aborting...')
-                return False
-    
-            # Retrieve integer value from entry node
-            acquisition_mode_continuous = node_acquisition_mode_continuous.GetValue()
-    
-            # Set integer value from entry node as new value of enumeration node
-            node_acquisition_mode.SetIntValue(acquisition_mode_continuous)
-            
-            self.cam.BeginAcquisition()
-            
+            self.cam.BeginAcquisition()            
             
             return self.cam
         else:
@@ -79,13 +82,110 @@ class FleaCameraInterface(GenericCameraInterface):
         self.cam.EndAcquisition()
         self.cam.DeInit()
         
+        
+    def set_value(self, nodeName, value):
+        """ Writes a value to node.
+        """
+        
+        nodemap = self.cam.GetNodeMap()        
+        nodemap_tldevice = self.cam.GetTLDeviceNodeMap()  
+        
+        # Reference to node
+        node = PySpin.CEnumerationPtr(nodemap.GetNode(nodeName))
+
+        # Check node is writeable
+        if not PySpin.IsAvailable(node) or not PySpin.IsWritable(node):
+            print('Unable to write to this node.')
+            return False
+        
+        # Get value we want to set
+        nodeEntry = node.GetEntryByName(value)
+        
+        # Check this value can be written
+        if not PySpin.IsAvailable(nodeEntry) or not PySpin.IsReadable(nodeEntry):
+            print('Unable to write this value.')
+            return False
+        
+        nodeEntryValue = nodeEntry.GetValue()
+
+        # Set integer value from entry node as new value of enumeration node
+        node.SetIntValue(nodeEntryValue)
+        
+        return True
+    
+    
+    def get_nodes(self):
+        
+        for node in self.cam.GetNodeMap().GetNodes():
+            pit = node.GetPrincipalInterfaceType()
+            name = node.GetName()
+            self.camera_node_types[name] = self._attr_type_names.get(pit, pit)
+            if pit == PySpin.intfICommand:
+                self.camera_methods[name] = PySpin.CCommandPtr(node)
+            if pit in self._attr_types:
+                self.camera_attributes[name] = self._attr_types[pit](node)
+        
+        
+        
+    def get_values(self, nodeName):
+        """ Returns list of possible values to set for a node """
+        
+        nodemap = self.cam.GetNodeMap()        
+        nodemap_tldevice = self.cam.GetTLDeviceNodeMap()  
+        
+        # Reference to node
+        node = PySpin.CEnumerationPtr(nodemap.GetNode(nodeName))
+        
+        entryNames = []
+        if hasattr(node, 'GetEntries'):
+            for entry in node.GetEntries():
+                entryNames.append(entry.GetName().split('_')[-1])   
+            return entryNames
+        else:
+            return None
+        
+    
+    def get_value(self, nodeName):
+        """ Gets the value set for a node"""
+        
+        nodemap = self.cam.GetNodeMap()        
+        nodemap_tldevice = self.cam.GetTLDeviceNodeMap()  
+        
+        # Reference to node
+        node = PySpin.CEnumerationPtr(nodemap.GetNode(nodeName))
+        
+        
+            
+        if hasattr(node, "GetValue"):
+            return node.GetValue()
+        elif hasattr(node, "ToString"):
+           return node.ToString()
+        else:
+            return None
+        
+        
+    
+    def get_nodes(self):
+        """ Returns a list of nodes """
+        
+        nodes = []
+        for node in self.cam.GetNodeMap().GetNodes():
+            nodes.append(node.GetName())
+         
+        nodes.sort()    
+        
+        return nodes
+        
+       
     def dispose(self):
+        del self.cam 
         
         # Clear camera list before releasing system
         self.camList.Clear()
 
         # Release system instance
         self.system.ReleaseInstance()
+        
         
                
     def get_image(self):
@@ -108,34 +208,58 @@ class FleaCameraInterface(GenericCameraInterface):
     ###### Frame Rate
 
     def set_frame_rate_on(self):
-        nodemap = self.cam.GetNodeMap()
-        node = PySpin.CEnumerationPtr(nodemap.GetNode("AcquisitionFrameRateAuto"))
-        node.SetIntValue(0)
-        return True        
+        
+        try:
+            nodemap = self.cam.GetNodeMap()
+            node = PySpin.CEnumerationPtr(nodemap.GetNode("AcquisitionFrameRateAuto"))
+            node.SetIntValue(0)
+            return True  
+        except:
+            return False
+        
+        
+    def set_trigger_mode(self, enabled):
+        """ Enables or disables trigger mode """
+        
+        if enabled:
+            return self.set_value('TriggerMode', 'On')
+        else:
+            return self.set_value('TriggerMode', 'Off')
+
 
     def set_frame_rate(self, fps):
-        self.set_frame_rate_on()
-        if self.cam.AcquisitionFrameRate.GetAccessMode() == PySpin.RW:
-            self.cam.AcquisitionFrameRate.SetValue(fps)
-            return True
-        else:
-            print("Auto FPS")
-            return False 
+                
+        # Make sure auto frame rate is disabled, will return false if can't turn off 
+        # auto frame rate
+        success = self.set_frame_rate_on()
+        
+        if success:                
+            if self.cam.AcquisitionFrameRate.GetAccessMode() == PySpin.RW:
+                print(f"Frame rate set attempted to set to {fps}.")
+                self.cam.AcquisitionFrameRate.SetValue(fps)
+                return True
+            else:
+                print("Can't set frame rate, in automatic frame rate mode.")
+                return False    
+    
     
     def get_frame_rate(self):
-        return self.cam.AcquisitionFrameRate.GetValue()
+        if self.is_frame_rate_enabled():
+            return self.cam.AcquisitionFrameRate.GetValue()
+        else:
+            return 0
 
     
     def get_frame_rate_range(self):
-        return self.cam.AcquisitionFrameRate.GetMin(), self.cam.AcquisitionFrameRate.GetMax()         
+        return self.cam.AcquisitionFrameRate.GetMin(), self.cam.AcquisitionFrameRate.GetMax()      
+    
     
     def is_frame_rate_enabled(self):
-        print(self.cam.AcquisitionFrameRate.GetAccessMode() == PySpin.RW)
         return (self.cam.AcquisitionFrameRate.GetAccessMode() == PySpin.RW )
     
+       
     def get_measured_frame_rate(self):
         return None 
-
 
 
     ##### Exposure
@@ -143,11 +267,24 @@ class FleaCameraInterface(GenericCameraInterface):
         return False
 
     def set_exposure(self, exposure):
+        
+        # Ensure auto exposure is off
         self.cam.ExposureAuto.SetValue(0)
         
+        if exposure < self.get_exposure_range()[0]: 
+            exposure = self.get_exposure_range()[0]
+            warnings.warn(f"Set exposure limited to minimum allowed value of {self.get_exposure_range()[0]}.")
+        if exposure > self.get_exposure_range()[1]: 
+            exposure = self.get_exposure_range()[1]
+            warnings.warn(f"Set exposure limited to maximum allowed value of {self.get_exposure_range()[1]}.")
+        
         if self.cam.ExposureTime.GetAccessMode() == PySpin.RW:
-            self.cam.ExposureTime.SetValue(exposure)
-            return True
+            try:
+                self.cam.ExposureTime.SetValue(exposure)
+                return True
+            except:
+                return False
+                print(f"FleaCameraInterface: Cannot set exposure value of {exposure} us.")
         else:
             return False             
         
@@ -163,17 +300,35 @@ class FleaCameraInterface(GenericCameraInterface):
     def is_gain_enabled(self):
         return False
         
+    
     def set_gain(self, gain):
-        self.cam.GainAuto.SetValue(0)
+        
+        # Ensure auto gain is off
+        self.cam.GainAuto.SetValue(0)  
+        
+        if gain < self.get_gain_range()[0]: 
+            gain = self.get_gain_range()[0]
+            warnings.warn(f"Set gain limited to minimum allowed value of {self.get_gain_range()[0]}.")
+        if gain > self.get_gain_range()[1]: 
+            gain = self.get_gain_range()[1]
+            warnings.warn(f"Set gain limited to maximum allowed value of {self.get_gain_range()[1]}.")
 
         if self.cam.Gain.GetAccessMode() == PySpin.RW:
-            self.cam.Gain.SetValue(gain)
+            try:
+                self.cam.Gain.SetValue(gain)
+                return True
+            except:
+                return False
+                print(f"FleaCameraInterface: Cannot set gain value of {gain}.")
             return True
         else:
             return False 
+        
+
     
     def get_gain(self):
         return self.cam.Gain.GetValue() 
+    
     
     def get_gain_range(self):
         return self.cam.Gain.GetMin(), self.cam.Gain.GetMax()

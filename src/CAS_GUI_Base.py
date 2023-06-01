@@ -1,29 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-Kent-CAS-GUI
-Camera Acquisition System (CAS) GUI Base Class
+Kent-CAS-GUI-Base
 
-CAS_GUI is a graphical user interface built around the 
-Kent Camera Acquisition System (CAS).
+Kent CAS GUI is a graphical user interface built around the 
+Kent Camera Acquisition System (Kent-CAS).
 
 By itself, this class allows camera images or files to be viewed in real time. 
 
 It is intended as a base class to be extended by more complete programs that
 provide further functionality.
 
-@author: Mike Hughes
-Applied Optics Group
-University of Kent
+@author: Mike Hughes, Applied Optics Group, University of Kent
 
 """
 
 import sys 
 import os
 import inspect
+
 sys.path.append(os.path.abspath("widgets"))
 sys.path.append(os.path.abspath("cameras"))
 sys.path.append(os.path.abspath("threads"))
-
 
 import time
 import numpy as np
@@ -45,7 +42,7 @@ from PIL import Image
 import cv2 as cv
 
 from ImageAcquisitionThread import ImageAcquisitionThread
-from ImageDisplay import ImageDisplay
+from image_display import ImageDisplay
 
 from cam_control_panel import *
 
@@ -57,24 +54,28 @@ from DummyThread import DummyThread
 from datetime import datetime
 
 from threading import Lock
-cuda = True
+
+from pathlib import Path
+
+cuda = True                 # Set to False to disable use of GPU
 
 
 class CAS_GUI(QMainWindow):
     
+    # The values for the fields are stored in the registry using these IDs:
     authorName = "AOG"
     appName = "CAS"
         
-    # Define available cameras
+    # Define available cameras interface and their display names in the drop-down menu
     camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam']
     camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera']
           
     # Default source for simulated camera
-    sourceFilename = r"..\tests\test_data\im1.tif"
+    sourceFilename = Path('../tests/test_data/im1.tif')
     
     rawImageBufferSize = 10
     
-    # Gui display defaults
+    # GIO display defaults
     imageDisplaySize = 300
     controlPanelSize = 220
     
@@ -95,12 +96,19 @@ class CAS_GUI(QMainWindow):
     imageThread = None
     imageProcessor = None
     
-    def __init__(self,parent=None):    
+    cam = None
+    
+    def __init__(self, parent=None):    
+        
         
         super(CAS_GUI, self).__init__(parent)
 
+        # Create the GUI. This is generally over-ridden in sub-classes
         self.create_layout()
+        
+        # Creates timers for GUI and camera acquisition
         self.create_timers()  
+        
         
         self.acquisitionLock = Lock()
     
@@ -108,16 +116,18 @@ class CAS_GUI(QMainWindow):
         self.settings = QtCore.QSettings(self.authorName, self.appName)  
         self.gui_restore()
         
-        # In case software is being used for first time, we implement some
-        # useful defaults
-        #self.apply_default_settings()
+        # In case software is being used for first time, we can implement some
+        # useful defaults (for example in a sub-class)
+        self.apply_default_settings()
 
         self.move(0,0)
-        #self.lock = threading.Lock()
+        
+        # Make sure the display is correct for whatever camera source 
+        # we initially have selected
         self.handle_cam_source_change()
         
         
-    def apply_default_settings():
+    def apply_default_settings(self):
         """Overload this function in sub-class to provide defaults"""
         pass
     
@@ -127,8 +137,7 @@ class CAS_GUI(QMainWindow):
 
         # Create timer for GUI updates
         self.GUITimer=QTimer()
-        self.GUITimer.timeout.connect(self.update_GUI)
-        
+        self.GUITimer.timeout.connect(self.update_GUI)        
         
         # Create timer for image processing
         self.imageTimer=QTimer()
@@ -136,8 +145,9 @@ class CAS_GUI(QMainWindow):
         
         
     def create_layout(self):
-        """ Asemble the GUI from Qt Widget. Overload this in subclass to
-        define a custom layout """
+        """ Assemble the GUI from Qt Widget. Overload this in subclass to
+        define a custom layout.
+        """
 
         self.setWindowTitle('Camera Acquisition System')       
 
@@ -167,18 +177,19 @@ class CAS_GUI(QMainWindow):
         
         
     def create_processors(self):
-        """Subclasses overload this to create processing threads"""
+        """Subclasses should overload this to create processing threads."""
         pass
             
     
     def handle_images(self):
         """ Called regularly by a timer to deal with input images. If a processor
         is defined by the sub-class, this will handle processing. Overload for
-        a custom processing pipeline"""
+        a custom processing pipeline.
+        """
         
-        # Grab the most uptodate image for display. If it is an image, we store
-        # this in currentImage which is the image displayed in the GUI (if the 
-        # raw image is being displayed.)
+        # Grab the most up-to-date image for display. If not None, we store
+        # this in currentImage which is the image displayed in the GUI if the 
+        # raw image is being displayed.
         if self.imageThread is not None:
             im = self.imageThread.get_latest_image()
             if im is not None:
@@ -204,14 +215,16 @@ class CAS_GUI(QMainWindow):
 
     def update_image_display(self):
        """ Displays the current raw image. 
-       Sub-classes should overload this if additional displays used."""
+       Sub-classes should overload this if additional displays boxes used.
+       """
        
        if self.currentImage is not None:
            self.mainDisplay.set_mono_image(self.currentImage)           
        
         
     def update_camera_status(self):
-       """ Updates real-time camera frame rate display"""                 
+       """ Updates real-time camera frame rate display
+       """                 
       
        if self.imageProcessor is not None:
            procFps = self.imageProcessor.get_actual_fps()
@@ -230,58 +243,45 @@ class CAS_GUI(QMainWindow):
     def update_camera_ranges(self):       
         """ After updating a camera parameter, the valid range of other parameters
         might change (e.g. frame rate may affect allowed exposures). Call this
-        to update the GUI with correct ranges """    
-        if self.cam.get_exposure() is not None:
-            self.exposureSlider.setValue((self.cam.get_exposure()))
-            min, max = self.cam.get_exposure_range()
-            self.exposureSlider.setMaximum((max))
-            self.exposureSlider.setMinimum((min))
-            self.exposureInput.setMaximum((max))
-            self.exposureInput.setMinimum((min))
-            self.exposureSlider.setTickInterval(int(round(max - min) / 10))
-        
-        if self.cam.get_gain() is not None:
-            self.gainSlider.setValue(int(self.cam.get_gain()))
-            min, max = self.cam.get_gain_range()
-            self.gainSlider.setMaximum(math.floor(max))
-            self.gainSlider.setMinimum(math.ceil(min))
-            self.gainInput.setMaximum(math.floor(max))
-            self.gainInput.setMinimum(math.ceil(min))
-            self.gainSlider.setTickInterval(int(round(max - min) / 10))
-        
-        if self.cam.is_frame_rate_enabled():
-            min, max = self.cam.get_frame_rate_range()
-            self.frameRateInput.setValue((self.cam.get_frame_rate()))
-            self.frameRateSlider.setMaximum((max))
-            self.frameRateSlider.setMinimum((min))
-            self.frameRateInput.setMaximum((max))
-            self.frameRateInput.setMinimum((min))
-            self.frameRateSlider.setTickInterval(int(round(max - min) / 10))
-        else:
-            self.frameRateSlider.setEnabled = False
+        to update the GUI with correct ranges.
+        """    
+        if self.cam is not None:
+            if self.cam.get_exposure() is not None:
+                min, max = self.cam.get_exposure_range()
+                self.exposureSlider.setMaximum((max))
+                self.exposureSlider.setMinimum((min))
+                self.exposureInput.setMaximum((max))
+                self.exposureInput.setMinimum((min))
+                self.exposureSlider.setTickInterval(int(round(max - min) / 10))
+                self.exposureSlider.setValue((self.cam.get_exposure()))
+            
+            if self.cam.get_gain() is not None:
+                min, max = self.cam.get_gain_range()
+                self.gainSlider.setMaximum(math.floor(max))
+                self.gainSlider.setMinimum(math.ceil(min))
+                self.gainInput.setMaximum(math.floor(max))
+                self.gainInput.setMinimum(math.ceil(min))
+                self.gainSlider.setTickInterval(int(round(max - min) / 10))
+                self.gainSlider.setValue(int(self.cam.get_gain()))
+            
+            self.cam.set_frame_rate_on()
+            if self.cam.is_frame_rate_enabled():
+                self.frameRateSlider.setEnabled = True
+                self.frameRateInput.setEnabled = True
+                min, max = self.cam.get_frame_rate_range()
+                self.frameRateSlider.setMaximum((max))
+                self.frameRateSlider.setMinimum((min))
+                self.frameRateInput.setMaximum((max))
+                self.frameRateInput.setMinimum((min))
+                self.frameRateSlider.setTickInterval(int(round(max - min) / 10))
+                self.frameRateInput.setValue((self.cam.get_frame_rate()))
+            else:
+                self.frameRateInput.setValue((self.cam.get_frame_rate()))
+                self.frameRateSlider.setEnabled = False
+                self.frameRateInput.setEnabled = False
 
         
-    def handle_exposure_slider(self):
-        self.exposureSlider.setValue(self.exposureInput.value())
-        if self.camOpen == True: 
-            self.cam.set_exposure(self.exposureSlider.value())
-            self.update_camera_ranges()
-            
-          
-    def handle_gain_slider(self):
-        self.gainInput.setValue(int(self.gainSlider.value()))
-        if self.camOpen == True: 
-            self.cam.set_gain(self.gainSlider.value())
-            self.update_camera_ranges()
-         
-            
-    def handle_frame_rate_slider(self):
-        self.frameRateSlider.setValue(self.frameRateInput.value())
-        if self.camOpen:             
-            self.cam.set_frame_rate(self.frameRateInput.value())
-            fps = self.cam.get_frame_rate()
-            self.update_camera_ranges()
-    
+       
                      
     def update_camera_from_GUI(self):
         if self.camOpen:             
@@ -343,10 +343,10 @@ class CAS_GUI(QMainWindow):
         if self.camOpen == True:
             self.GUITimer.stop()
             self.imageTimer.stop()
-            try:
-                self.imageThread.stop()
-            except:
-                print("could not close camera")
+            #try:
+            self.imageThread.stop()
+            #except:
+            #    print("could not close camera")
             self.camOpen = False
             self.endBtn.setEnabled(False)
             self.startBtn.setEnabled(True)
@@ -400,7 +400,28 @@ class CAS_GUI(QMainWindow):
         self.update_GUI()
         #print("Time to update GUI", time.perf_counter() - t1)
 
-        
+    
+    def handle_exposure_slider(self):
+        self.exposureSlider.setValue(self.exposureInput.value())
+        if self.camOpen == True: 
+            self.cam.set_exposure(self.exposureSlider.value())
+            self.update_camera_ranges()
+             
+           
+    def handle_gain_slider(self):
+        self.gainInput.setValue(int(self.gainSlider.value()))
+        if self.camOpen == True: 
+            self.cam.set_gain(self.gainSlider.value())
+            self.update_camera_ranges()
+          
+             
+    def handle_frame_rate_slider(self):
+        self.frameRateSlider.setValue(self.frameRateInput.value())
+        if self.camOpen:             
+            self.cam.set_frame_rate(self.frameRateInput.value())
+            fps = self.cam.get_frame_rate()
+            self.update_camera_ranges()
+    
         
     def closeEvent(self, event):
         """ Called when main window closed   """ 
@@ -413,6 +434,7 @@ class CAS_GUI(QMainWindow):
         active = mp.active_children()
         for child in active:
             child.terminate()
+           
             
 
     def load_background_click(self, event):
@@ -433,40 +455,66 @@ class CAS_GUI(QMainWindow):
         
     def acquire_background_click(self,event):
         self.acquire_background()
-        
+    
     
     def save_image_as_button_click(self, event):
-        try:
-            filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
-        except:
-            filename = None
-        if filename is not None and self.currentProcessedImage is not None:
-            self.save_image_ac(self.currentProcessedImage, filename)
-            
+        """ Requests filename then saves current processed image. If there
+        is no processed image, try to save raw image instead.
+        """
+        im = self.currentProcessedImage
+        if im is not None:
+            try:
+                filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
+            except:
+                filename = None
+            if filename is not None:
+                self.save_image_ac(im, filename)
+            else:
+                QMessageBox.about(self, "Error", "Invalid filename.")  
+
+        else:
+            # If there is no processed image, try saving the raw image
+            self.save_raw_as_button_click(0)
+
     
     def save_raw_as_button_click(self, event):
-        try:
-            filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
-        except:
-            filename = None
-        if filename is not None and self.currentImage is not None:
-            self.save_image(self.currentImage, filename)  
- 
+        """ Requests filename then saves current raw image.
+        """
+        
+        im = self.currentImage
+        if im is not None:
+            try:
+                filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
+            except:
+                filename = None
+            if filename is not None and self.currentImage is not None:
+                self.save_image(im, filename)  
+        else:
+            QMessageBox.about(self, "Error", "There is no image to save.")  
+
+
+    
 
     def snap_image_button_click(self, event):
+        """ Saves current raw, processed and background images, if they
+        exist, to timestamped files in the snaps folder."""
       
         now = datetime.now()
  
-        rawFile = now.strftime('..\\snaps\\%Y_%m_%d_%H_%M_%S_raw.tif')
-        procFile = now.strftime('..\\snaps\\%Y_%m_%d_%H_%M_%S_proc.tif')
-        backFile = now.strftime('..\\snaps\\%Y_%m_%d_%H_%M_%S_back.tif')
+        rawFile = Path(now.strftime('../snaps/%Y_%m_%d_%H_%M_%S_raw.tif'))
+        procFile = Path(now.strftime('../snaps/%Y_%m_%d_%H_%M_%S_proc.tif'))
+        backFile = Path(now.strftime('../snaps/%Y_%m_%d_%H_%M_%S_back.tif'))
         
         if self.currentImage is not None:
-            self.save_image(self.currentImage, rawFile) 
-        if self.currentProcessedImage is not None:
-            self.save_image_ac(self.currentProcessedImage, procFile)  
-        if self.backgroundImage is not None:
-            self.save_image(self.backgroundImage, backFile)
+            self.save_image(self.currentImage, rawFile)             
+            if self.currentProcessedImage is not None:
+                self.save_image_ac(self.currentProcessedImage, procFile)  
+            if self.backgroundImage is not None:
+                self.save_image(self.backgroundImage, backFile)
+        else:  
+            QMessageBox.about(self, "Error", "There is no image to save.")  
+
+     
  
 
     def record_click(self):
@@ -479,7 +527,6 @@ class CAS_GUI(QMainWindow):
         self.update_GUI()
         
     
-   
     
     
     def save_image_ac(self,img, fileName):
@@ -532,23 +579,33 @@ class CAS_GUI(QMainWindow):
         if self.backgroundImage is not None:
             im = Image.fromarray(self.backgroundImage)
             im.save('background.tif')
+        else:
+            QMessageBox.about(self, "Error", "There is no background image to save.")  
+
             
 
     def save_background_as(self):
         """ Request filename and save current background image to this file"""        
-        try:
-            filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
-        except:
-            filename = None
-        if filename is not None and self.backgroundImage is not None:
-            self.save_image(self.backgroundImage, filename)  
-            
+        
+        if self.backgroundImage is not None:
+
+            try:
+                filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
+            except:
+                filename = None
+            if filename is not None and self.backgroundImage is not None:
+                self.save_image(self.backgroundImage, filename)  
+        else:
+            QMessageBox.about(self, "Error", "There is no background image to save.")  
+
 
     def acquire_background(self):
         """ Takes current image as background"""
         if self.currentImage is not None:
             self.backgroundImage = self.currentImage
-             
+        else:
+            QMessageBox.about(self, "Error", "There is no current image to use as the background.")  
+
 
     def start_recording(self):
         """ For future use"""
@@ -596,12 +653,12 @@ class CAS_GUI(QMainWindow):
               index = obj.currentIndex()  # get current index from combobox
               text = obj.itemText(index)  # get the text for current index
               self.settings.setValue(name, text)  # save combobox selection to registry
-              
+                            
           if isinstance(obj, QDoubleSpinBox):
               name = obj.objectName()  
               value = obj.value()  
               self.settings.setValue(name, value)  
-              
+                            
           if isinstance(obj, QSpinBox):
               name = obj.objectName()  
               value = obj.value()  
@@ -649,25 +706,33 @@ class CAS_GUI(QMainWindow):
               name = obj.objectName()
               if self.settings.value(name) is not None:
                   value = (self.settings.value(name).decode('utf-8'))  # get stored value from registry
-                  obj.setText(value)  # restore lineEditFile
-    
+                  obj.setText(value)  
+                  
           if isinstance(obj, QCheckBox):
               name = obj.objectName()
               value = self.settings.value(name)  # get stored value from registry
               if value != None:
-                  obj.setChecked(str2bool(value))  # restore checkbox
+                  obj.setChecked(str2bool(value))  
                   
           if isinstance(obj, QDoubleSpinBox):
               name = obj.objectName()
               value = self.settings.value(name)  # get stored value from registry
               if value != None:
-                  obj.setValue(float(value))  # restore checkbox
+                  if obj.maximum() < float(value):
+                      obj.setMaximum(float(value))
+                  if obj.minimum() > float(value):
+                      obj.setMinimum(float(value))
+                  obj.setValue(float(value))  
                   
           if isinstance(obj, QSpinBox):
               name = obj.objectName()
               value = self.settings.value(name)  # get stored value from registry
               if value != None:
-                  obj.setValue(int(value))  # restore checkbox
+                  if obj.maximum() < float(value):
+                      obj.setMaximum(float(value))
+                  if obj.minimum() > float(value):
+                      obj.setMinimum(float(value))
+                  obj.setValue(int(value)) 
     
           if isinstance(obj, QRadioButton):
              name = obj.objectName()

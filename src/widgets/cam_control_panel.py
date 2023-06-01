@@ -122,6 +122,8 @@ def init_cam_control_panel(self, controlPanelSize):
     
     self.mainMenuLayout.addWidget(self.startBtn)
     self.mainMenuLayout.addWidget(self.endBtn)
+    self.mainMenuLayout.addItem(verticalSpacer:= QtWidgets.QSpacerItem(20, 10, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum))
+
     self.mainMenuLayout.addWidget(self.saveImageAsBtn)
     self.mainMenuLayout.addWidget(self.saveRawAsBtn)
     self.mainMenuLayout.addWidget(self.snapImageBtn)

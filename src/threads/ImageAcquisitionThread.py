@@ -13,7 +13,6 @@ University of Kent
 import queue
 import threading
 import time
-import multiprocessing as mp
 
 class ImageAcquisitionThread(threading.Thread):
     
@@ -32,7 +31,7 @@ class ImageAcquisitionThread(threading.Thread):
         
         self.bufferSize = bufferSize
                 
-        self.imageQueue = mp.Queue(maxsize=self.bufferSize)
+        self.imageQueue = queue.Queue(maxsize=self.bufferSize)
         
         self.lastFrameTime = 0
         self.frameStepTime = 0

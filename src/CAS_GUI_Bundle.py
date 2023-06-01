@@ -56,7 +56,7 @@ import pickle
 
 class CAS_GUI_Bundle(CAS_GUI):
     
-    mosaicingEnabled = True
+    mosaicingEnabled = False
     authorName = "AOG"
     appName = "CAS-Bundle"
     camSource = 'SimulatedCamera'
@@ -372,25 +372,27 @@ class CAS_GUI_Bundle(CAS_GUI):
             else:
                 self.imageProcessor.crop = None
                 
-            self.imageProcessor.pyb.set_bundle_loc((self.bundleCentreXInput.value(), self.bundleCentreYInput.value(), self.bundleRadiusInput.value()))
+            self.imageProcessor.pyb.set_loc((self.bundleCentreXInput.value(), self.bundleCentreYInput.value(), self.bundleRadiusInput.value()))
             self.imageProcessor.pyb.set_crop(self.bundleCropCheck.isChecked())
             self.imageProcessor.pyb.set_auto_contrast(False)
             if self.bundleMaskCheck.isChecked():
+                self.imageProcessor.pyb.set_apply_mask(True) 
                 self.imageProcessor.pyb.set_auto_mask(self.currentImage)
             else:
+                self.imageProcessor.pyb.set_apply_mask(False) 
                 self.imageProcessor.pyb.set_mask(None)
                 
             if self.bundleSubtractBackCheck.isChecked():
-                if self.backgroundImage is not None:
-                    self.imageProcessor.pyb.set_background(self.backgroundImage)
+                self.imageProcessor.pyb.set_background(self.backgroundImage)
             else:
                 self.imageProcessor.pyb.set_background(None)
-                
+
+        
             if self.bundleNormaliseCheck.isChecked():
-                if self.backgroundImage is not None:
-                    self.imageProcessor.pyb.set_normalise_image(self.backgroundImage)    
+                self.imageProcessor.pyb.set_normalise_image(self.backgroundImage)   
             else:
                 self.imageProcessor.pyb.set_normalise_image(None)
+
     
             self.imageProcessor.pyb.set_filter_size(self.bundleFilterSizeInput.value())    
             self.imageProcessor.pyb.outputType = 'float'
@@ -404,27 +406,35 @@ class CAS_GUI_Bundle(CAS_GUI):
             
             
     def handle_bundle_find(self):
+        
         if self.currentImage is not None:
             loc = pybundle.find_bundle(pybundle.to8bit(self.currentImage))
             self.bundleCentreXInput.setValue(loc[0])
             self.bundleCentreYInput.setValue(loc[1])
             self.bundleRadiusInput.setValue(loc[2])
+            
         else:
             QMessageBox.about(self, "Error", "There is no image to analyse.")
              
                              
     def handle_calibrate(self):
         
+        
+        
         if self.backgroundImage is not None and self.imageProcessor is not None:
             
             QApplication.setOverrideCursor(Qt.WaitCursor)
             self.imageProcessor.pyb.set_calib_image(self.backgroundImage)
+            #self.imageProcessor.pyb.set_background(self.backgroundImage)
+            #self.imageProcessor.pyb.set_normalise_image(self.backgroundImage)
+
             self.imageProcessor.pyb.calibrate()
             print(f"Found {np.shape(self.imageProcessor.pyb.calibration.coreX)} cores.")
             QApplication.restoreOverrideCursor()
 
         else:
             QMessageBox.about(self, "Error", "Image and background image required")  
+        
         self.handle_changed_bundle_processing()
         
             
