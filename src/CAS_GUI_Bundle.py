@@ -377,7 +377,7 @@ class CAS_GUI_Bundle(CAS_GUI):
             self.imageProcessor.pyb.set_auto_contrast(False)
             if self.bundleMaskCheck.isChecked():
                 self.imageProcessor.pyb.set_apply_mask(True) 
-                self.imageProcessor.pyb.set_auto_mask(self.currentImage)
+                self.imageProcessor.pyb.set_auto_mask(True)
             else:
                 self.imageProcessor.pyb.set_apply_mask(False) 
                 self.imageProcessor.pyb.set_mask(None)
