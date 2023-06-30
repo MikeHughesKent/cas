@@ -67,8 +67,8 @@ class CAS_GUI(QMainWindow):
     appName = "CAS"
         
     # Define available cameras interface and their display names in the drop-down menu
-    camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam']
-    camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera']
+    camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
+    camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
           
     # Default source for simulated camera
     sourceFilename = Path('../tests/test_data/im1.tif')
@@ -192,6 +192,7 @@ class CAS_GUI(QMainWindow):
         # raw image is being displayed.
         if self.imageThread is not None:
             im = self.imageThread.get_latest_image()
+            
             if im is not None:
                 self.currentImage = im        
                 
@@ -219,7 +220,7 @@ class CAS_GUI(QMainWindow):
        """
        
        if self.currentImage is not None:
-           self.mainDisplay.set_mono_image(self.currentImage)           
+           self.mainDisplay.set_image(self.currentImage)           
        
         
     def update_camera_status(self):
@@ -324,6 +325,8 @@ class CAS_GUI(QMainWindow):
         self.cam = self.imageThread.get_camera()
 
         if self.cam is not None:
+            #if self.cam.is_colour():
+            #    self.mainDisplay.setColor
             self.camOpen = True
             self.update_camera_ranges()
             self.update_camera_from_GUI()

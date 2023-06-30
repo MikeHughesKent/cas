@@ -58,16 +58,16 @@ class GenericCameraInterface:
         return None 
     
     def get_frame_rate(self):
-        return None 
+        return 0 
     
     def get_frame_rate_range(self):
-        return None         
+        return (0,0)         
     
     def is_frame_rate_enabled(self):
-        return None 
+        return False
     
     def get_measured_frame_rate(self):
-        return None 
+        return 0 
 
 
 
@@ -79,10 +79,10 @@ class GenericCameraInterface:
         return None       
         
     def get_exposure(self):
-        return None 
+        return 0
     
     def get_exposurerange(self):
-        return None 
+        return (0,0) 
     
         
     ##### Gain    
@@ -93,10 +93,10 @@ class GenericCameraInterface:
         return None 
     
     def get_gain(self):
-        return None 
+        return 0 
     
     def get_gain_range(self):
-        return None 
+        return (0,0) 
         
     ##### Trigger
     
@@ -108,6 +108,10 @@ class GenericCameraInterface:
     
     def set_file(self):
         pass
+    
+    
+    def is_colour(self):
+        return False
 
 if __name__ == "__main__":
     print("Test mode not implemented")
