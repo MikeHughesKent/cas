@@ -15,7 +15,7 @@ from PyQt5.QtXml import QDomDocument, QDomElement
 from DoubleSlider import *
 
 
-def init_cam_control_panel(self, controlPanelSize):
+def init_cam_control_panel(self, controlPanelSize, calibrate_button = False):
      
     self.camSourceCombo = QComboBox(objectName = 'camSourceCombo')
     self.camSourceCombo.addItems(self.camNames)
@@ -24,12 +24,13 @@ def init_cam_control_panel(self, controlPanelSize):
 
     self.startBtn=QPushButton('Start Acquisition')
     self.endBtn=QPushButton('Stop Acquisition')
+
     self.saveImageAsBtn=QPushButton('Save Image As')
     self.saveRawAsBtn=QPushButton('Save Raw As')
     self.snapImageBtn=QPushButton('Snap Image')
     self.recordBtn=QPushButton('Start Recording')  
 
-    self.endBtn.setEnabled(False)
+    #self.endBtn.setEnabled(False)
 
     self.loadFileButton.clicked.connect(self.load_file_click)
     self.startBtn.clicked.connect(self.start_acquire)
@@ -80,27 +81,20 @@ def init_cam_control_panel(self, controlPanelSize):
     self.processRateLabel = QLabel()
     self.procBufferFillLabel = QLabel()
 
-            
-
     camControlPanel = QWidget()
     camControlPanel.setLayout(topLayout:=QVBoxLayout())
     camControlPanel.setMaximumWidth(controlPanelSize)
-    camControlPanel.setMinimumWidth(controlPanelSize)
-    
+    camControlPanel.setMinimumWidth(controlPanelSize)    
     
     self.mainMenu = QGroupBox("Main Menu")
     topLayout.addWidget(self.mainMenu)
-
     
     self.camControlGroupBox = QGroupBox("Camera Control")
     topLayout.addWidget(self.camControlGroupBox)
     self.camLayout=QVBoxLayout()
-    self.camControlGroupBox.setLayout(self.camLayout)
-    
+    self.camControlGroupBox.setLayout(self.camLayout)   
   
     self.camSourceCombo.currentIndexChanged.connect(self.handle_cam_source_change)
-    
-    
     
     # File input Sub-panel
     self.inputFilePanel = QWidget()
@@ -109,7 +103,6 @@ def init_cam_control_panel(self, controlPanelSize):
     self.inputFilePanel.setMaximumWidth(controlPanelSize - 50)
     self.inputFilePanel.setMinimumWidth(controlPanelSize - 50)
     inputFileLayout.setContentsMargins(0,0,0,0)
-
    
     inputFileLayout.addWidget(self.loadFileButton)
 
@@ -127,7 +120,7 @@ def init_cam_control_panel(self, controlPanelSize):
     self.mainMenuLayout.addWidget(self.saveImageAsBtn)
     self.mainMenuLayout.addWidget(self.saveRawAsBtn)
     self.mainMenuLayout.addWidget(self.snapImageBtn)
-    #self.mainMenuLayout.addWidget(self.recordBtn)
+    self.mainMenuLayout.addWidget(self.recordBtn)
     
     self.camSettingsPanel = QWidget()
     self.camSettingsLayout = QVBoxLayout()
@@ -158,7 +151,6 @@ def init_cam_control_panel(self, controlPanelSize):
     self.frameRateInput.setMinimumWidth(90)
     self.camSettingsLayout.addLayout(frameRateLayout)
 
-    #self.camSettingsLayout.addWidget(QLabel('Status:'))
     self.camSettingsLayout.setContentsMargins(0,0,0,0)
 
     self.camLayout.addWidget(self.camSettingsPanel)
@@ -175,8 +167,6 @@ def init_cam_control_panel(self, controlPanelSize):
 
     
     camStatusLayout.addWidget(self.bufferFillLabel,1,1)
-    #camStatusLayout.addWidget(self.procBufferFillLabel,2,1)
-
     camStatusLayout.addWidget(self.frameRateLabel,3,1)
     camStatusLayout.addWidget(self.processRateLabel,4,1)
 
@@ -185,6 +175,8 @@ def init_cam_control_panel(self, controlPanelSize):
     
     
     topLayout.addStretch()
-            
+    
+    
+      
 
     return camControlPanel

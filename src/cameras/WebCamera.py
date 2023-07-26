@@ -38,8 +38,7 @@ class WebCamera(GenericCameraInterface):
         self.vc.release()
         
     def dispose(self):
-        del(self.sdk)
-               
+        pass               
         
     def get_image(self):
         
@@ -51,12 +50,10 @@ class WebCamera(GenericCameraInterface):
 
    
     def set_frame_rate_on(self):
-        
-       
         return True
     
     def get_exposure(self):
-        return self.exposure #self.vc.get(cv.CAP_PROP_EXPOSURE)
+        return self.vc.get(cv.CAP_PROP_EXPOSURE)
         
     def get_exposure_range(self):
         #r = self.camera.exposure_time_range_us
@@ -64,12 +61,17 @@ class WebCamera(GenericCameraInterface):
         return -10,0
    
     def set_exposure(self, exposure):
-        print(exposure)
         self.vc.set(cv.CAP_PROP_AUTO_EXPOSURE, 0.25)
         self.vc.set(cv.CAP_PROP_EXPOSURE, exposure) 
         self.exposure = exposure
         return True    
+     
+    def set_gain(self, gain):
+        self.vc.set(cv.CAP_PROP_GAIN, gain)
         
+    
+    def get_gain_range(self):
+        return (0,1)
 
 if __name__ == "__main__":
     print("Test mode not implemented")

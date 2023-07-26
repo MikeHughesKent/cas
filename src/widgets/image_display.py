@@ -23,6 +23,8 @@ from matplotlib import cm
 import math
 import time
 
+import cv2 as cv
+
 class ImageDisplay(QLabel):
     
    ELLIPSE = 0
@@ -51,6 +53,8 @@ class ImageDisplay(QLabel):
    dragging = False
    dragToX = None
    dragToY = None
+   imageWidth = None
+   imageHeight = None
 
    displayMin = 0
    displayMax = 255
@@ -127,7 +131,7 @@ class ImageDisplay(QLabel):
               self.panningX, self.panningY = self.image_coords(event.x(), event.y())
 
               self.set_image(self.currentImage)
-           
+         
            if self.is_mouse_on_image():
                closestX,closestY = self.image_coords_closest(event.x(), event.y()) #self.mouseMoved.emit(self.mouseX, self.mouseY)
                self.dragToX = closestX
@@ -177,7 +181,9 @@ class ImageDisplay(QLabel):
    def is_mouse_on_image(self):
        """ Returns True if mouse if over image"""
        if self.mouseX is None or self.mouseY is None:
+           
            return False
+       
        if self.mouseX >=0 and self.mouseY >=0 and self.mouseX < self.imageSize[1] and self.mouseY < self.imageSize[0]:
            return True
        else:
@@ -189,6 +195,8 @@ class ImageDisplay(QLabel):
        it has three dimensions then it is assumed that it is a colour images, and
        if it has two dimensions then it is assumed that is is a monochrome image."""
       
+           
+           
        if img.ndim > 2:
            self.set_rgb_image(img)
        else:
@@ -198,21 +206,38 @@ class ImageDisplay(QLabel):
    def set_mono_image(self, img):
        """ Sets a grayscale image as the current image """
        
+       # Compare width and height with width and height of last image. If it
+       # has changed then we adjust the displayX and displayY so we are looking
+       # at the same area.
+       if self.imageWidth is not None:       
+           if np.shape(img)[1] != self.imageWidth:
+               self.displayX = int(self.displayX / self.imageWidth * np.shape(img)[1])
+           if np.shape(img)[0] != self.imageHeight:
+               self.displayY = int(self.displayY / self.imageHeight * np.shape(img)[0])
+           
+       self.imageWidth = np.shape(img)[1]    
+       self.imageHeight = np.shape(img)[0]    
+       
+       
+       
        self.currentImage = img
        self.imageMode = self.MONO
        self.imageSize = np.shape(img)
-       
-       if img is not None and np.size(img) > 0:
+
+       if img is not None and np.size(img) > 0:           
            
-           img = img.astype('float')
-           
-           if self.autoScale and np.max(img) != 0:
+           t1 = time.perf_counter()
+           if self.autoScale: #and np.max(img) != 0:
+               img = img.astype('float32')
                img = img - np.min(img)
-               img = (img / np.max(img) * 255)
-           else:
-               img = img - self.displayMin
-               img = (img / self.displayMax * 255)
-           
+               m = np.max(img)
+               if m > 0:
+                   sf =  255 / m
+               else:
+                   sf = 0
+               img = img * sf
+               #img = cv.normalize(img,0,255,cv.NORM_MINMAX)           
+            
            img = img.astype('uint8')
            
            self.displayImage = self.zoom(img)          
@@ -235,19 +260,35 @@ class ImageDisplay(QLabel):
    def set_rgb_image(self, img):
        """ Sets a colour RGB image as the current image """
        
+       
+       # Compare width and height with width and height of last image. If it
+       # has changed then we adjust the displayX and displayY so we are looking
+       # at the same area.
+       if self.imageWidth is not None:       
+           if np.shape(img)[1] != self.imageWidth:
+               self.displayX = int(self.displayX / self.imageWidth * np.shape(img)[1])
+           if np.shape(img)[0] != self.imageHeight:
+               self.displayY = int(self.displayY / self.imageHeight * np.shape(img)[0])
+           
+       self.imageWidth = np.shape(img)[1]    
+       self.imageHeight = np.shape(img)[0]    
+       
+       
        self.currentImage = img.astype(float)       
-       self.imageMode = self.RGB
+       self.imageMode = self.RGB       
+       self.imageSize = np.shape(img)
+
        
        if img is not None and np.size(img) > 0:
            
-           img = img.astype('float')
+           # img = img.astype('float')
            
-           if self.autoScale and np.max(img) != 0:
-               img = img - np.min(img)
-               img = (img / np.max(img) * 255)
-           else:
-               img = img - self.displayMin
-               img = (img / self.displayMax * 255)
+           # if self.autoScale and np.max(img) != 0:
+           #     img = img - np.min(img)
+           #     img = (img / np.max(img) * 255)
+           # else:
+           #     img = img - self.displayMin
+           #     img = (img / self.displayMax * 255)
            
            img = img.astype('uint8')
 
@@ -704,7 +745,8 @@ class ImageDisplay(QLabel):
            
          
 class Overlay():
-    """ Class to store details about an overlay"""
+    """ Class to store details about an overlay.
+    """
     
     x1 = None  
     x2 = None

@@ -24,6 +24,7 @@ class SimulatedCamera(GenericCameraInterface):
         
         self.filename = kwargs.get('filename', None)
         self.lastImageTime = time.perf_counter()
+        self.lastImageTimeAdjusted = self.lastImageTime
         self.fps = 0
         self.frameRateEnabled = False
         if self.filename is not None:
@@ -75,44 +76,50 @@ class SimulatedCamera(GenericCameraInterface):
 
     def set_current_image(self, imNum):
         currentImageIdx = imNum
+        
                
     def get_image(self):
-       # for i, page in enumerate(ImageSequence.Iterator(im)):
-       #page.save("page%d.png" % i)
-     
-       if self.preLoaded:
-        
-           if self.currentFrame >= np.shape(self.imageBuffer)[2]:
-               self.currentFrame = 0
-           imData = self.imageBuffer[:,:,self.currentFrame].astype(self.dtype)
-           self.currentFrame = self.currentFrame + 1
-
-           
-       else:
-               
-
-           if self.currentFrame > self.dataset.n_frames - 1:
-               self.currentFrame = 0
-           
-           self.dataset.seek(self.currentFrame)
-           imData = np.array(self.dataset.getdata()).reshape(self.dataset.size[1], self.dataset.size[0]).astype(self.dtype)
-
-           self.currentFrame = self.currentFrame + 1
-        
-      
-       currentTime = time.perf_counter()
-       if self.fps > 0:
-           desiredWait = 1/self.fps
-           waitNeeded = desiredWait - (currentTime - self.lastImageTime)
-           #print("Rate ", currentTime - self.lastImageTime)
-           #print("Desired Rate, ", desiredWait )
-           #print("Wait Needed ", waitNeeded)
     
-           if waitNeeded > 0:
-               time.sleep(waitNeeded)
+       desiredWait = 1/self.fps
+       currentTime = time.perf_counter()
+
+       waitNeeded = desiredWait - (currentTime - self.lastImageTimeAdjusted)
        
-       self.actualFrameRate = 1/(time.perf_counter() - self.lastImageTime)     
-       self.lastImageTime = time.perf_counter() 
+       
+       
+       if waitNeeded < 0:
+           self.lastImageTime = time.perf_counter()
+           
+           # We keep a record of the last time minus the wait needed. This way,
+           # when we have waited too long (i.e. waitNeeded << 0) we add something
+           # to the lastImageTimeAdjusted which has the effect of making the next
+           # wait needed shorter. This lead to a more accurate frame rate.
+           self.lastImageTimeAdjusted = self.lastImageTime - waitNeeded
+
+           if self.preLoaded:
+            
+               if self.currentFrame >= np.shape(self.imageBuffer)[2]:
+                   self.currentFrame = 0
+               imData = self.imageBuffer[:,:,self.currentFrame].astype(self.dtype)
+               self.currentFrame = self.currentFrame + 1
+    
+               
+           else:
+                   
+               if self.currentFrame > self.dataset.n_frames - 1:
+                   self.currentFrame = 0
+               
+               self.dataset.seek(self.currentFrame)
+               imData = np.array(self.dataset.getdata()).reshape(self.dataset.size[1], self.dataset.size[0]).astype(self.dtype)
+    
+           self.currentFrame = self.currentFrame + 1
+           self.actualFrameRate = 1/(time.perf_counter() - self.lastImageTime)     
+       
+       else:
+        
+            imData = None
+      
+          
 
        return imData
     

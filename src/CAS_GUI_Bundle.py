@@ -17,7 +17,7 @@ University of Kent
 """
 
 import sys 
-sys.path.append('C:\\Users\\AOG\\Dropbox\\Programming\\Python\\pybundle')
+sys.path.append('C:\\Users\\AOG\\Dropbox\\Programming\\Python\\pyfibrebundle\\src')
 
 import os
 sys.path.append(os.path.abspath("widgets"))
@@ -42,7 +42,7 @@ import cv2 as cv
 from CAS_GUI_Base import CAS_GUI
 
 from ImageAcquisitionThread import ImageAcquisitionThread
-from ImageDisplay import ImageDisplay
+from image_display import ImageDisplay
 
 import matplotlib.pyplot as plt
 from cam_control_panel import *
@@ -339,13 +339,13 @@ class CAS_GUI_Bundle(CAS_GUI):
         """ Overrides from base class to include mosaicing window"""
         if self.bundleShowRaw.isChecked():
            if self.currentImage is not None:
-               self.mainDisplay.set_mono_image(self.currentImage)
+               self.mainDisplay.set_image(self.currentImage)
         else:
            if self.currentProcessedImage is not None:
-               self.mainDisplay.set_mono_image(self.currentProcessedImage)
+               self.mainDisplay.set_image(self.currentProcessedImage)
         
         if self.mosaicingEnabled:
-           self.mosaicDisplay.set_mono_image(self.imageProcessor.get_mosaic())       
+           self.mosaicDisplay.set_image(self.imageProcessor.get_mosaic())       
         
     
     def handle_changed_bundle_processing(self):

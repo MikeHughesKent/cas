@@ -19,7 +19,7 @@ class FileInterface(GenericCameraInterface):
     currentFrame = 0
     dtype = 'uint16'
     currentImageIdx = 0
-    lastImageIdx = 1
+    lastImageIdx = -1
     lastImage = None
     fileOpen = False
     
@@ -66,51 +66,60 @@ class FileInterface(GenericCameraInterface):
         pass
     
     
-    def pre_load(self, nImages):
+    # def pre_load(self, nImages):
         
-        dataset = Image.open(self.filename)
-        h = np.shape(self.dataset)[0]
-        w = np.shape(self.dataset)[1]
+    #     dataset = Image.open(self.filename)
+    #     h = np.shape(self.dataset)[0]
+    #     w = np.shape(self.dataset)[1]
+    #     c = np.shape(self.dataset)[2]
         
-        if nImages > 0:
-            framesToLoad = min(nImages, self.dataset.n_frames)
-        else:
-            framesToLoad = self.dataset.n_frames
-        self.imageBuffer = np.zeros((h,w,framesToLoad), dtype = self.dtype)
+    #     if nImages > 0:
+    #         framesToLoad = min(nImages, self.dataset.n_frames)
+    #     else:
+    #         framesToLoad = self.dataset.n_frames
+    #     self.imageBuffer = np.zeros((h,w,framesToLoad), dtype = self.dtype)
 
-        for i in range(framesToLoad):
-            self.dataset.seek(i)
-            self.imageBuffer[:,:,i] = np.array(self.dataset).astype(self.dtype)
-        self.preLoaded = True
+    #     for i in range(framesToLoad):
+    #         self.dataset.seek(i)
+    #         self.imageBuffer[:,:,i] = np.array(self.dataset).astype(self.dtype)
+    #     self.preLoaded = True
 
                
     def get_image(self):
+      # print("get image")
        # for i, page in enumerate(ImageSequence.Iterator(im)):
        #page.save("page%d.png" % i)
      
-       if self.preLoaded:
+       # if self.preLoaded:
         
-           if self.currentFrame >= np.shape(self.imageBuffer)[2]:
-               self.currentFrame = 0
-           imData = self.imageBuffer[:,:,self.currentFrame].astype(self.dtype)
-           self.currentFrame = self.currentFrame + 1
+       #     if self.currentFrame >= np.shape(self.imageBuffer)[2]:
+       #         self.currentFrame = 0
+       #     imData = self.imageBuffer[:,:,self.currentFrame].astype(self.dtype)
+       #     self.currentFrame = self.currentFrame + 1
 
            
-       else:
+       # else:
                
-           # If we have already loaded this image, just return it
-           if self.currentImageIdx == self.lastImageIdx:
-               return self.lastImage
+       #     # If we have already loaded this image, just return it
+       if self.currentImageIdx == self.lastImageIdx:
+           return self.lastImage
            
-           # otherwise load if fom the file 
-           self.dataset.seek(self.currentImageIdx)
-           imData = np.array(self.dataset.getdata()).reshape(self.dataset.size[1], self.dataset.size[0]).astype(self.dtype)
-
-           self.currentFrame = self.currentFrame + 1
-           self.lastImage = imData
-           self.lastImageIdx = self.currentImageIdx
-           
-
+       # otherwise load if fom the file 
+       #self.dataset.seek(self.currentImageIdx)
+       #imData = np.array(self.dataset.getdata()).reshape(self.dataset.size[1], self.dataset.size[0]).astype(self.dtype)
+      # print("correct")
+      # print(self.dataset)
+      # print(self.dataset.asarray())
+       
+       #print(self.dataset)
+       #print(imData)
+       imData = np.asarray(self.dataset)
+       self.currentFrame = self.currentFrame + 1
+       self.lastImage = imData
+       self.lastImageIdx = self.currentImageIdx
+       #print(imData)
+       
+       
        return imData
     
     def set_image_idx(self, idx):
