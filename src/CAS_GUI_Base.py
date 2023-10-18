@@ -276,12 +276,12 @@ class CAS_GUI(QMainWindow):
         if self.cam is not None:
             if self.cam.get_exposure() is not None:
                 min, max = self.cam.get_exposure_range()
-                self.exposureSlider.setMaximum((max))
-                self.exposureSlider.setMinimum((min))
-                self.exposureInput.setMaximum((max))
-                self.exposureInput.setMinimum((min))
+                self.exposureSlider.setMaximum(math.floor(max))
+                self.exposureSlider.setMinimum(math.ceil(min))
+                self.exposureInput.setMaximum(math.floor(max))
+                self.exposureInput.setMinimum(math.ceil(min))
                 self.exposureSlider.setTickInterval(int(round(max - min) / 10))
-                self.exposureSlider.setValue((self.cam.get_exposure()))
+                self.exposureSlider.setValue(int(self.cam.get_exposure()))
             
             if self.cam.get_gain() is not None:
                 min, max = self.cam.get_gain_range()
@@ -297,10 +297,10 @@ class CAS_GUI(QMainWindow):
                 self.frameRateSlider.setEnabled = True
                 self.frameRateInput.setEnabled = True
                 min, max = self.cam.get_frame_rate_range()
-                self.frameRateSlider.setMaximum((max))
-                self.frameRateSlider.setMinimum((min))
-                self.frameRateInput.setMaximum((max))
-                self.frameRateInput.setMinimum((min))
+                self.frameRateSlider.setMaximum(math.floor(max))
+                self.frameRateSlider.setMinimum(math.ceil(min))
+                self.frameRateInput.setMaximum(math.floor(max))
+                self.frameRateInput.setMinimum(math.ceil(min))
                 self.frameRateSlider.setTickInterval(int(round(max - min) / 10))
                 self.frameRateInput.setValue((self.cam.get_frame_rate()))
             else:
@@ -317,10 +317,10 @@ class CAS_GUI(QMainWindow):
         if self.cam is not None:
             if self.cam.get_exposure() is not None:
                 min, max = self.cam.get_exposure_range()
-                self.exposureSlider.setMaximum((max))
-                self.exposureSlider.setMinimum((min))
-                self.exposureInput.setMaximum((max))
-                self.exposureInput.setMinimum((min))
+                self.exposureSlider.setMaximum(math.floor(max))
+                self.exposureSlider.setMinimum(math.ceil(min))
+                self.exposureInput.setMaximum(math.floor(max))
+                self.exposureInput.setMinimum(math.ceil(min))
                 self.exposureSlider.setTickInterval(int(round(max - min) / 10))
             
             if self.cam.get_gain() is not None:
@@ -336,10 +336,10 @@ class CAS_GUI(QMainWindow):
                 self.frameRateSlider.setEnabled = True
                 self.frameRateInput.setEnabled = True
                 min, max = self.cam.get_frame_rate_range()
-                self.frameRateSlider.setMaximum((max))
-                self.frameRateSlider.setMinimum((min))
-                self.frameRateInput.setMaximum((max))
-                self.frameRateInput.setMinimum((min))
+                self.frameRateSlider.setMaximum(math.floor(max))
+                self.frameRateSlider.setMinimum(math.ceil(min))
+                self.frameRateInput.setMaximum(math.floor(max))
+                self.frameRateInput.setMinimum(math.ceil(min))
                 self.frameRateSlider.setTickInterval(int(round(max - min) / 10))
             else:
                 self.frameRateSlider.setEnabled = False
