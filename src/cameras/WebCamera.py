@@ -21,20 +21,16 @@ class WebCamera(GenericCameraInterface):
         pass
         
         
-            
         
     def get_camera_list(self):
         return None
         
         
     def open_camera(self, camNum):
-        self.vc = cv.VideoCapture(1)
-
-        
-              
+        self.vc = cv.VideoCapture(camNum)
+      
         
     def close_camera(self):
-
         self.vc.release()
         
     def dispose(self):
@@ -56,8 +52,7 @@ class WebCamera(GenericCameraInterface):
         return self.vc.get(cv.CAP_PROP_EXPOSURE)
         
     def get_exposure_range(self):
-        #r = self.camera.exposure_time_range_us
-        
+        #r = self.camera.exposure_time_range_us        
         return -10,0
    
     def set_exposure(self, exposure):
@@ -68,6 +63,10 @@ class WebCamera(GenericCameraInterface):
      
     def set_gain(self, gain):
         self.vc.set(cv.CAP_PROP_GAIN, gain)
+        
+        
+    def get_gain(self):
+        return self.vc.get(cv.CAP_PROP_GAIN)
         
     
     def get_gain_range(self):

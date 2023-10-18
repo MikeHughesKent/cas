@@ -188,19 +188,14 @@ class FleaCameraInterface(GenericCameraInterface):
         
         
                
-    def get_image(self):
-        image = self.cam.GetNextImage(10000)
-        if image.IsIncomplete():
+    def get_image(self, timeout = 10000):
+        image = self.cam.GetNextImage(timeout)
+        if image.IsIncomplete() or image is None:
             print('Image incomplete with image status %d ...' % image.GetImageStatus())
-
-
-        #result &= acquire_images(cam, nodemap, nodemap_tldevice)
-        imageData = image.GetNDArray()
-
-        #cv.imshow("Camera Stream", cv.resize(self.imageData,(300,300)))
-        #cv.waitKey(1)
-        
-        return imageData
+            return None
+        else:
+            imageData = image.GetNDArray()
+            return imageData
     
     
     

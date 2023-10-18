@@ -25,7 +25,7 @@ class SimulatedCamera(GenericCameraInterface):
         self.filename = kwargs.get('filename', None)
         self.lastImageTime = time.perf_counter()
         self.lastImageTimeAdjusted = self.lastImageTime
-        self.fps = 0
+        self.fps = 10
         self.frameRateEnabled = False
         if self.filename is not None:
             self.dataset = Image.open(self.filename)
@@ -43,7 +43,6 @@ class SimulatedCamera(GenericCameraInterface):
         
     def open_camera(self, camID):        
         self.imStream = Image.open(self.filename)
-       # print(Image.mode)
                
                 
     def close_camera(self):
@@ -52,13 +51,13 @@ class SimulatedCamera(GenericCameraInterface):
         
     def dispose(self):
         self.dataset.close()
-
         pass
     
     
     def pre_load(self, nImages):
+        # Pre-Loads nImages into memory, avoiding file read timing slowing
+        # down apparent frame rate
         
-        #dataset = Image.open(self.filename)
         h = np.shape(self.dataset)[0]
         w = np.shape(self.dataset)[1]
         
@@ -79,14 +78,18 @@ class SimulatedCamera(GenericCameraInterface):
         
                
     def get_image(self):
-    
+       # Either loads the next image from the file or, if we have pre-loaded,
+       # copies the image from memory. Returns the image.
+       
+       
+       # Calculate delay needed to simulate desired frame rate
        desiredWait = 1/self.fps
        currentTime = time.perf_counter()
-
        waitNeeded = desiredWait - (currentTime - self.lastImageTimeAdjusted)
        
        
-       
+       # Only return an image if enough time has passed since the last image
+       # to match the frame rate, otherwise return None
        if waitNeeded < 0:
            self.lastImageTime = time.perf_counter()
            
@@ -116,16 +119,16 @@ class SimulatedCamera(GenericCameraInterface):
            self.actualFrameRate = 1/(time.perf_counter() - self.lastImageTime)     
        
        else:
-        
+           
             imData = None
       
-          
-
        return imData
     
     
     
-    ###### Frame Rate
+    # The following are implmented to better simulate a real camera:
+    
+    ###### Frame Rate 
 
     def enable_frame_rate(self):
         self.frameRateEnabled = True
