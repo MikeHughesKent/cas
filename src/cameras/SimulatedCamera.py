@@ -104,8 +104,7 @@ class SimulatedCamera(GenericCameraInterface):
                if self.currentFrame >= np.shape(self.imageBuffer)[2]:
                    self.currentFrame = 0
                imData = self.imageBuffer[:,:,self.currentFrame].astype(self.dtype)
-               self.currentFrame = self.currentFrame + 1
-    
+   
                
            else:
                    

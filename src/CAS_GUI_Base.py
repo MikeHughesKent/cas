@@ -69,7 +69,7 @@ class CAS_GUI(QMainWindow):
     camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
           
     # Default source for simulated camera
-    sourceFilename = Path('../tests/test_data/im1.tif')
+    sourceFilename = Path('../examples/data/vid_example.tif')
     
     rawImageBufferSize = 10
     
