@@ -189,9 +189,12 @@ class FleaCameraInterface(GenericCameraInterface):
         
                
     def get_image(self, timeout = 10000):
-        image = self.cam.GetNextImage(timeout)
-        if image.IsIncomplete() or image is None:
-            print('Image incomplete with image status %d ...' % image.GetImageStatus())
+        try:
+            image = self.cam.GetNextImage(timeout)
+        except:
+            image = None
+        
+        if  image is None:
             return None
         else:
             imageData = image.GetNDArray()

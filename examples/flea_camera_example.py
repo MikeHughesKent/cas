@@ -20,6 +20,9 @@ cam = FleaCameraInterface()
 # Open the camera. The argument is the camera number.
 cam.open_camera(0)
 
+# Disable trigger
+cam.set_trigger_mode(False)
+
 
 # Grab the next image
 img = cam.get_image()
@@ -65,7 +68,7 @@ print(f"Exposure can be between {min_exp} and {max_exp}.")
 
 
 # Set the exposure and gain
-cam.set_exposure(10000)
+cam.set_exposure(4000)
 print(f"Exposure is now {cam.get_exposure()}.")
 
 cam.set_gain(10)
@@ -75,12 +78,14 @@ print(f"Gain is now {cam.get_gain()}.")
 # Enable the trigger. If there is no trigger signal this will timout
 cam.set_trigger_mode(True)
 timeout = 100
+cam.get_image(timeout = timeout)        # Read in any images already acquired, otherwise can't tell if trigger is working
 img = cam.get_image(timeout = timeout)
 if img is None:
     print("Triggering timed out.")
 else:
     print("Triggered image acquired.")    
 
+cam.set_trigger_mode(False)
 
 
 # Close the camera 
