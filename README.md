@@ -45,6 +45,14 @@ In addition, there are two other camera classes:
 * File Interface (FileInterface.py) - Provides an interface to an image stored as a file which is compatible with the camera interfaces, simplifying GUIs which need to work with both videos streams from cameras and saved images.
 * Camera Simulator (SimulatedCamera.py) - Simulates a camera using a saved tif stack of images. Images are served at the requested frame rate. Requires PIL.
 
+## Examples
+
+Examples of basic use of CAS are in the examples folder:
+
+* Simulated Camera Example - Demonstrates how to capture images from a simulated camera which streams images from a tif stack file.
+* Webcamera Example - Demonstrates how to capture monochrome images from a web camera.
+* Flea Camera Examples - Demonstrates how to capture images from a FLIR camera, including setting and getting various parameters and triggering.
+
 ## Requirements
 
 CAS requirements depends on the specific camera used (see list above).
