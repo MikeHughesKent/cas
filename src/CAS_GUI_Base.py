@@ -63,6 +63,7 @@ class CAS_GUI(QMainWindow):
     # The values for the fields are stored in the registry using these IDs:
     authorName = "AOG"
     appName = "CAS"
+    windowTitle = "Kent Camera Acquisition System"
         
     # Define available cameras interface and their display names in the drop-down menu
     camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
@@ -71,16 +72,19 @@ class CAS_GUI(QMainWindow):
     # Default source for simulated camera
     sourceFilename = Path('../examples/data/vid_example.tif')
     
+    # The size of the queue for raw images from the camera. If this is exceeded
+    # then the oldest image will be removed.
     rawImageBufferSize = 10
     
-    # GIO display defaults
+    # GUI display defaults
     imageDisplaySize = 300
     controlPanelSize = 220
     
     # Timer interval defualts (ms)
-    GUIupdateInterval = 200
+    GUIupdateInterval = 100
     imagesUpdateInterval = 5
-        
+      
+    # Defaults
     currentImage = None
     camOpen = False
     backgroundImage = None
@@ -90,21 +94,24 @@ class CAS_GUI(QMainWindow):
     recording = False
     videoOut = None
     numFramesRecorded  = 0
-    
-    settings = {}   
-  
     imageThread = None
     imageProcessor = None
-    
     cam = None
+    rawImage = None
+    settings = {}   
+  
     
-    def __init__(self, parent=None):    
-        
+    
+    def __init__(self, parent=None):   
+        """ Initial setup of GUI.
+        """
         
         super(CAS_GUI, self).__init__(parent)
 
         # Create the GUI. This is generally over-ridden in sub-classes
         self.create_layout()
+        
+        self.set_colour_scheme()
         
         # Creates timers for GUI and camera acquisition
         self.create_timers()         
@@ -148,40 +155,128 @@ class CAS_GUI(QMainWindow):
         define a custom layout.
         """
 
-        self.setWindowTitle('Kent Camera Acquisition System')       
+        # Create a standard layout, with panels arranged horizontally
+        self.layout, self.mainWidget = self.create_standard_layout(title = self.windowTitle)
 
-        self.layout = QHBoxLayout()
-        self.mainDisplayFrame = QVBoxLayout()
-        
-        # Create the image display widget which will show the video
-        self.mainDisplay = ImageDisplay(name = "mainDisplay")
-        self.mainDisplay.isStatusBar = True
-        self.mainDisplay.autoScale = True
+        # Add an image display. The reference to the display must be stored
+        # in self.mainDisplay in order for handle_images to work.
+        self.mainDisplay, self.mainDisplayFrame =  self.create_image_display()       
+        self.layout.addLayout(self.mainDisplayFrame)
        
         # Create the panel with camera control options (e.g. exposure)
-        self.camControlPanel = init_cam_control_panel(self, self.controlPanelSize)   
-        
-        # Add the camera display to a parent layout
-        self.mainDisplayFrame.addWidget(self.mainDisplay)
-        
-        self.layout.addLayout(self.mainDisplayFrame)
+        self.camControlPanel = self.create_cam_control_panel(self.controlPanelSize) 
         self.layout.addWidget(self.camControlPanel)
-
-        widget = QWidget()
-        widget.setLayout(self.layout)
-
-        # Set the central widget of the Window. Widget will expand
-        # to take up all the space in the window by default.
-        self.setCentralWidget(widget)
+        
+        # Make the start button visible and end button invisible
         self.endBtn.setVisible(False)
-
         self.startBtn.setVisible(False)
+        
+        
+    
+    def create_standard_layout(self, title = "Kent Camera Acquisition System"):
+        """ Creates a standard layout where each panel is arranged horizontally.
+        Specify the window title as an optional argument.
+        Returns tuple of references to the layout and the widget it sits inside.
+        """        
+        
+        self.setWindowTitle(title)       
+        layout = QHBoxLayout()
+        
+        widget = QWidget()
+        widget.setLayout(layout)
+        
+        self.setCentralWidget(widget)
+        
+        return layout, widget
+
+    
+    def create_image_display(self, name = "Image Display", statusBar = True, autoScale = True):
+        """ Adds an image display to the standard layout. Returns tuple of reference to image
+        display widget and reference to container widget in which this sits. These references
+        must be kept in scope.
+        
+        """
+        
+        # Create an instance of an ImageDisplay with the required properties
+        display = ImageDisplay(name = name)
+        display.isStatusBar = statusBar
+        display.autoScale = autoScale
+        
+        # Create an outer widget to put the display frame in
+        displayFrame = QVBoxLayout()
+        displayFrame.addWidget(display)
+
+        
+        return display, displayFrame
+       
+        
+    def create_cam_control_panel(self, controlPanelSize = 150, **kwargs):  
+        """ Creates a camera control panel. Optionally specify the
+        width in pixels.
+        Returns a reference to the control panel. This reference must be kept.
+        """
+
+        controlPanel = init_cam_control_panel(self, controlPanelSize, **kwargs) 
+        return controlPanel
+        
+        
 
     def create_processors(self):
         """Subclasses should overload this to create processing threads."""
         pass
-            
+      
+
+    def set_colour_scheme(self, scheme = 'dark'):
+        """ Sets the colour scheme for the GUI. Currently only supports the
+        default 'dark' scheme.
+        """
+        QtWidgets.QApplication.setStyle("Fusion")
+
+        palette = QtWidgets.QApplication.palette()
+
+        if scheme == 'dark':        
+            palette.setColor(QPalette.Window, QColor(53, 53, 53))
+            palette.setColor(QPalette.WindowText, Qt.white)
+            palette.setColor(QPalette.Base, QColor(25, 25, 25))
+            palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+            palette.setColor(QPalette.ToolTipBase, Qt.black)
+            palette.setColor(QPalette.ToolTipText, Qt.white)
+            palette.setColor(QPalette.Text, Qt.white)
+            palette.setColor(QPalette.Button, QColor(53, 53, 53))
+            palette.setColor(QPalette.ButtonText, Qt.white)
+            palette.setColor(QPalette.BrightText, Qt.red)
+            palette.setColor(QPalette.Link, QColor(42, 130, 218))
+            palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+            palette.setColor(QPalette.HighlightedText, Qt.black)
+            palette.setColor(QPalette.Disabled, QPalette.Light, Qt.black)
+            palette.setColor(QPalette.Disabled, QPalette.Shadow, QColor(12, 15, 16))
+        
+        QtWidgets.QApplication.setPalette(palette)
+        
     
+    def create_control_panel_container(self,name = "Menu", panelSize = 200, compact = True):
+        """
+        Creates a panel for menu options.
+        """
+        
+        controlPanel = QWidget()
+        controlPanel.setLayout(topLayout:=QVBoxLayout())
+        controlPanel.setMaximumWidth(panelSize)
+        controlPanel.setMinimumWidth(panelSize) 
+        
+        widget = QGroupBox(name)
+        topLayout.addWidget(widget)
+        
+        layout=QVBoxLayout()
+        widget.setLayout(layout) 
+
+        if compact:
+            topLayout.addStretch()
+        
+        return controlPanel, widget, layout
+    
+    
+
     def handle_images(self):
         """ Called regularly by a timer to deal with input images. If a processor
         is defined by the sub-class, this will handle processing. Overload for
@@ -190,34 +285,42 @@ class CAS_GUI(QMainWindow):
         # Grab the most up-to-date image for display. If not None, we store
         # this in currentImage which is the image displayed in the GUI if the 
         # raw image is being displayed.
+
         gotRawImage = False
         gotProcessedImage = False
-        if self.imageThread is not None: 
+        rawImage = None
+        
+        if self.imageProcessor is not None:
             
-            if self.imageThread.is_image_ready():
- 
-                # If we have an image processor defined and we are doing manual image
-                # transfer to a separate input queue to the processor (rather than queue
-                # sharing), we copy the image to the processor input queue        
-                if self.imageProcessor is not None and self.manualImageTransfer is True:
+            # If we have an image processor defined and we are doing manual image
+            # transfer to a separate input queue to the processor (rather than queue
+            # sharing), and we have a raw image ready, we copy the image to the 
+            # processor input queue     
+            
+            if self.imageProcessor is not None and self.manualImageTransfer is True:
+                if self.imageThread.is_image_ready():
                     rawImage = self.imageThread.get_next_image()
                     if rawImage is not None:
-                        self.imageProcessor.add_image(rawImage)            
-                   
-                # If image processor present, get the latest processed image from the image processor    
-                if self.imageProcessor is not None: 
-                    if self.imageProcessor.is_image_ready() is True:
-                        gotProcessedImage = True
-                        self.currentProcessedImage = self.imageProcessor.get_next_image()
-                else:
-                # If no image processor then remove the image from the queue
-                    self.currentProcessedImage = None 
-                    rawImage  = self.imageThread.get_next_image()
-                
-                if rawImage is not None:
-                    gotRawImage = True
-                    self.currentImage = rawImage        
-        
+                        self.imageProcessor.add_image(rawImage) 
+            
+            # If there is a new processed image, pull it off the queue
+            if self.imageProcessor.is_image_ready() is True:
+                gotProcessedImage = True
+                self.currentProcessedImage = self.imageProcessor.get_next_image()
+            
+        elif self.imageThread is not None: 
+            
+            # If there is no image processor, but we are acquiring images
+            # then update the raw image
+            self.currentProcessedImage = None 
+
+            if self.imageThread.is_image_ready():
+                rawImage  = self.imageThread.get_next_image()
+               
+            if rawImage is not None:
+                gotRawImage = True
+                self.currentImage = rawImage        
+
         if self.recording and self.videoOut is not None:
             
             if self.currentProcessedImage is not None and gotProcessedImage:
@@ -229,7 +332,6 @@ class CAS_GUI(QMainWindow):
             
             if imToSave is not None:
                 self.numFramesRecorded = self.numFramesRecorded + 1
-                print(self.numFramesRecorded)
                 if imToSave.ndim  == 3:
                     outImg = imToSave
                 else:
@@ -243,15 +345,19 @@ class CAS_GUI(QMainWindow):
 
     def update_image_display(self):
        """ Displays the current raw image. 
-       Sub-classes should overload this if additional displays boxes used.
+       Sub-classes should overload this if additional display boxes used.
        """
-       
-       if self.currentImage is not None:
+       if self.currentProcessedImage is not None:           
+           self.mainDisplay.set_image(self.currentProcessedImage)           
+
+       elif self.currentImage is not None:
            self.mainDisplay.set_image(self.currentImage)           
        
         
     def update_camera_status(self):
-       """ Updates real-time camera frame rate display
+       """ Updates real-time camera frame rate display. If the camera control
+       panel has not been created this will cause an error, so this function
+       must be overridden.
        """                 
       
        if self.imageProcessor is not None:
@@ -791,7 +897,9 @@ class CAS_GUI(QMainWindow):
       """ Load GUI widgets values/states from registry"""
      
       for name, obj in inspect.getmembers(self):
+
           if isinstance(obj, QComboBox):
+
               index = obj.currentIndex()  # get current region from combobox
               name = obj.objectName()
               value = (self.settings.value(name))
@@ -851,33 +959,16 @@ def str2bool(v):
         return v.lower() in ("yes", "true", "t", "1")
    
     
-
+# Launch the GUI
 if __name__ == '__main__':
     
    app=QApplication(sys.argv)
    app.setStyle("Fusion")
-
-   #Now use a palette to switch to dark colors:
-   palette = QPalette()
-   palette.setColor(QPalette.Window, QColor(53, 53, 53))
-   palette.setColor(QPalette.WindowText, Qt.white)
-   palette.setColor(QPalette.Base, QColor(25, 25, 25))
-   palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-   palette.setColor(QPalette.ToolTipBase, Qt.black)
-   palette.setColor(QPalette.ToolTipText, Qt.white)
-   palette.setColor(QPalette.Text, Qt.white)
-   palette.setColor(QPalette.Button, QColor(53, 53, 53))
-   palette.setColor(QPalette.ButtonText, Qt.white)
-   palette.setColor(QPalette.BrightText, Qt.red)
-   palette.setColor(QPalette.Link, QColor(42, 130, 218))
-   palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-   palette.setColor(QPalette.HighlightedText, Qt.black)
-   palette.setColor(QPalette.Disabled, QPalette.Light, Qt.black)
-   palette.setColor(QPalette.Disabled, QPalette.Shadow, QColor(12, 15, 16))
-   
-   app.setPalette(palette)  
-   
-   window=CAS_GUI()
+     
+   # Create and display GUI
+   window = CAS_GUI()
    window.show()
+   
+   # When the window is closed, close everything
    sys.exit(app.exec_())
 

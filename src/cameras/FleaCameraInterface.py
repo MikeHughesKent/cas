@@ -64,7 +64,7 @@ class FleaCameraInterface(GenericCameraInterface):
             
             self.cam = self.cams[camID]
             
-                       # Initialize camera
+            # Initialize camera
             self.cam.Init()
     
             self.set_value('AcquisitionMode', 'Continuous')
@@ -231,12 +231,11 @@ class FleaCameraInterface(GenericCameraInterface):
         # auto frame rate
         success = self.set_frame_rate_on()
         
-        if success:                
+        try:                
             if self.cam.AcquisitionFrameRate.GetAccessMode() == PySpin.RW:
-                print(f"Frame rate set attempted to set to {fps}.")
                 self.cam.AcquisitionFrameRate.SetValue(fps)
                 return True
-            else:
+        except:
                 print("Can't set frame rate, in automatic frame rate mode.")
                 return False    
     

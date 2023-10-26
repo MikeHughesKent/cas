@@ -11,3 +11,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(testdir, srcdir)))
 
 srcdir = '../src/cameras'
 sys.path.insert(0, os.path.abspath(os.path.join(testdir, srcdir)))
+
+srcdir = '../src/widgets'
+sys.path.insert(0, os.path.abspath(os.path.join(testdir, srcdir)))
+
+srcdir = '../src/threads'
+sys.path.insert(0, os.path.abspath(os.path.join(testdir, srcdir)))

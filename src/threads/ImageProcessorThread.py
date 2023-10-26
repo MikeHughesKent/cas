@@ -55,8 +55,9 @@ class ImageProcessorThread(threading.Thread):
     def run(self):
         
         
-
+         
          while self.isStarted:
+             
              
              if not self.isPaused:
                  
@@ -68,10 +69,11 @@ class ImageProcessorThread(threading.Thread):
                      for i in range(self.batchProcessNum):
                          temp = self.outputQueue.get()
                      
-                 # Check we have got at least as many images as we intend to batch process  
+                # Check we have got at least as many images as we intend to batch process  
                 # print(self.get_num_images_in_input_queue(), " in queue")
                 # print(self.batchProcessNum)
                  if self.get_num_images_in_input_queue() >= self.batchProcessNum:
+
                      if self.acquisitionLock is not None: self.acquisitionLock.acquire()
                      try:
 
@@ -89,6 +91,8 @@ class ImageProcessorThread(threading.Thread):
                              self.currentInputImage = self.inputQueue.get()
                              self.currentOutputImage = self.process_frame(self.currentInputImage)
                              self.outputQueue.put(self.currentOutputImage)
+
+
                      
                          # Timing
                          self.currentFrameNumber = self.currentFrameNumber + 1
