@@ -100,8 +100,8 @@ def init_cam_control_panel(self, controlPanelSize, calibrate_button = False):
     self.inputFilePanel = QWidget()
     inputFileLayout = QVBoxLayout()
     self.inputFilePanel.setLayout(inputFileLayout)
-    self.inputFilePanel.setMaximumWidth(controlPanelSize - 50)
-    self.inputFilePanel.setMinimumWidth(controlPanelSize - 50)
+    #self.inputFilePanel.setMaximumWidth(controlPanelSize - 50)
+    #self.inputFilePanel.setMinimumWidth(controlPanelSize - 50)
     inputFileLayout.setContentsMargins(0,0,0,0)
    
     inputFileLayout.addWidget(self.loadFileButton)
