@@ -228,29 +228,32 @@ class CAS_GUI(QMainWindow):
 
     def set_colour_scheme(self, scheme = 'dark'):
         """ Sets the colour scheme for the GUI. Currently only supports the
-        default 'dark' scheme.
+        default 'dark' scheme and 'black' scheme.
         """
         QtWidgets.QApplication.setStyle("Fusion")
 
         palette = QtWidgets.QApplication.palette()
 
-        if scheme == 'dark':        
+        palette.setColor(QPalette.WindowText, Qt.white)
+        palette.setColor(QPalette.Base, QColor(25, 25, 25))
+        palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+        palette.setColor(QPalette.ToolTipBase, Qt.black)
+        palette.setColor(QPalette.ToolTipText, Qt.white)
+        palette.setColor(QPalette.Text, Qt.white)
+        palette.setColor(QPalette.Button, QColor(53, 53, 53))
+        palette.setColor(QPalette.ButtonText, Qt.white)
+        palette.setColor(QPalette.BrightText, Qt.red)
+        palette.setColor(QPalette.Link, QColor(42, 130, 218))
+        palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+        palette.setColor(QPalette.HighlightedText, Qt.black)
+        palette.setColor(QPalette.Disabled, QPalette.Light, Qt.black)
+        palette.setColor(QPalette.Disabled, QPalette.Shadow, QColor(12, 15, 16))
+            
+        if scheme == 'dark':
             palette.setColor(QPalette.Window, QColor(53, 53, 53))
-            palette.setColor(QPalette.WindowText, Qt.white)
-            palette.setColor(QPalette.Base, QColor(25, 25, 25))
-            palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-            palette.setColor(QPalette.ToolTipBase, Qt.black)
-            palette.setColor(QPalette.ToolTipText, Qt.white)
-            palette.setColor(QPalette.Text, Qt.white)
-            palette.setColor(QPalette.Button, QColor(53, 53, 53))
-            palette.setColor(QPalette.ButtonText, Qt.white)
-            palette.setColor(QPalette.BrightText, Qt.red)
-            palette.setColor(QPalette.Link, QColor(42, 130, 218))
-            palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-            palette.setColor(QPalette.HighlightedText, Qt.black)
-            palette.setColor(QPalette.Disabled, QPalette.Light, Qt.black)
-            palette.setColor(QPalette.Disabled, QPalette.Shadow, QColor(12, 15, 16))
-        
+        elif scheme == 'black':
+            palette.setColor(QPalette.Window, QColor(0, 0, 0))
+
         QtWidgets.QApplication.setPalette(palette)
         
     
@@ -290,6 +293,7 @@ class CAS_GUI(QMainWindow):
         gotProcessedImage = False
         rawImage = None
         
+        
         if self.imageProcessor is not None:
             
             # If we have an image processor defined and we are doing manual image
@@ -307,15 +311,22 @@ class CAS_GUI(QMainWindow):
             if self.imageProcessor.is_image_ready() is True:
                 gotProcessedImage = True
                 self.currentProcessedImage = self.imageProcessor.get_next_image()
+        
+        elif self.imageThread is not None:
             
-        elif self.imageThread is not None: 
+            self.currentProcessedImage = None 
+         
+            if self.imageThread.is_image_ready():
+                rawImage  = self.imageThread.get_latest_image()
+        
+        else:
             
-            # If there is no image processor, but we are acquiring images
-            # then update the raw image
             self.currentProcessedImage = None 
 
-            if self.imageThread.is_image_ready():
-                rawImage  = self.imageThread.get_next_image()
+        
+        if self.imageThread is not None:
+
+            rawImage  = self.imageThread.get_latest_image()
                
             if rawImage is not None:
                 gotRawImage = True

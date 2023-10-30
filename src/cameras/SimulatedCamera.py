@@ -83,7 +83,10 @@ class SimulatedCamera(GenericCameraInterface):
        
        
        # Calculate delay needed to simulate desired frame rate
-       desiredWait = 1/self.fps
+       if self.fps > 0:
+           desiredWait = 1/self.fps
+       else:
+           desiredWait = 100000
        currentTime = time.perf_counter()
        waitNeeded = desiredWait - (currentTime - self.lastImageTimeAdjusted)
        
@@ -104,7 +107,6 @@ class SimulatedCamera(GenericCameraInterface):
                if self.currentFrame >= np.shape(self.imageBuffer)[2]:
                    self.currentFrame = 0
                imData = self.imageBuffer[:,:,self.currentFrame].astype(self.dtype)
-   
                
            else:
                    
@@ -113,7 +115,7 @@ class SimulatedCamera(GenericCameraInterface):
                
                self.dataset.seek(self.currentFrame)
                imData = np.array(self.dataset.getdata()).reshape(self.dataset.size[1], self.dataset.size[0]).astype(self.dtype)
-    
+
            self.currentFrame = self.currentFrame + 1
            self.actualFrameRate = 1/(time.perf_counter() - self.lastImageTime)     
        
