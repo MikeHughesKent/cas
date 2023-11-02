@@ -75,5 +75,7 @@ class BundleProcessor(ImageProcessorThread):
         pass
 
     def get_mosaic(self):
-        return self.mosaic.get_mosaic()
-       
+        if self.mosaicing: 
+            return self.mosaic.get_mosaic()
+        else:
+            return None

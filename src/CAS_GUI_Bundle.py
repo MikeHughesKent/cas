@@ -56,10 +56,11 @@ import pickle
 
 class CAS_GUI_Bundle(CAS_GUI):
     
-    mosaicingEnabled = False
+    mosaicingEnabled = True
     authorName = "AOG"
     appName = "CAS-Bundle"
     camSource = 'SimulatedCamera'
+    windowTitle = "Fibre Bundle Imaging"
     sourceFilename = r"..\\..\endomicroscope\\test\\data\\raw_example.tif"
 
     def __init__(self,parent=None):                      
@@ -70,49 +71,29 @@ class CAS_GUI_Bundle(CAS_GUI):
     # Overloaded, call by superclass    
     def create_layout(self):
         
-        self.setWindowTitle('Camera Acquisition System: Bundle Processor')
-
-        self.layout = QHBoxLayout()
-     
-        # Create the image display widget which will show the video
-        self.mainDisplayFrame = QVBoxLayout()
-        self.mainDisplay = ImageDisplay(name = "mainDisplay")
-        self.mainDisplay.isStatusBar = True
-        self.mainDisplay.autoScale = True
-        self.mainDisplayFrame.addWidget(self.mainDisplay)
+        super().create_layout()
         
         # Create the mosaic display widget 
         if self.mosaicingEnabled:
-            self.mosaicDisplayFrame = QVBoxLayout()
+            self.mosaicDisplayFrame = QFrame()
+            self.mosaicDisplayLayout = QVBoxLayout()
+            self.mosaicDisplayLayout.setSpacing(0)
+            self.mosaicDisplayLayout.setContentsMargins(0, 0, 0, 0)
+            self.mosaicDisplayFrame.setLayout(self.mosaicDisplayLayout)
             self.mosaicControlPanel = self.init_mosaic_panel(self.controlPanelSize)
             self.mosaicDisplay = ImageDisplay(name = "mosaicDisplay")
             self.mosaicDisplay.isStatusBar = False
             self.mosaicDisplay.autoScale = True
-            self.mosaicDisplayFrame.addWidget(self.mosaicDisplay)
-
-        # Create the panel with camera control options (e.g. exposure)
-        self.camControlPanel = init_cam_control_panel(self, self.controlPanelSize)   
-        
+            self.mosaicDisplayLayout.addWidget(self.mosaicDisplay)
+            self.layout.insertWidget(1,self.mosaicDisplayFrame)            
+     
         # Create the bundle processing panel
         self.bundleProcessPanel = self.init_bundle_process_panel(self.controlPanelSize)
-        
-        self.layout.addLayout(self.mainDisplayFrame)
-        
-        if self.mosaicingEnabled:
-            self.layout.addLayout(self.mosaicDisplayFrame)            
-           
-        self.layout.addWidget(self.camControlPanel)
         self.layout.addWidget(self.bundleProcessPanel)
 
         if self.mosaicingEnabled:
             self.layout.addWidget(self.mosaicControlPanel)
 
-        widget = QWidget()
-        widget.setLayout(self.layout)
-
-        # Set the central widget of the Window. Widget will expand
-        # to take up all the space in the window by default.
-        self.setCentralWidget(widget)
         
         
         
@@ -337,15 +318,13 @@ class CAS_GUI_Bundle(CAS_GUI):
 
     def update_image_display(self):
         """ Overrides from base class to include mosaicing window"""
-        if self.bundleShowRaw.isChecked():
-           if self.currentImage is not None:
-               self.mainDisplay.set_image(self.currentImage)
-        else:
-           if self.currentProcessedImage is not None:
-               self.mainDisplay.set_image(self.currentProcessedImage)
-        
+        if self.bundleShowRaw.isChecked() is False and self.currentProcessedImage is not None:
+           self.mainDisplay.set_image(self.currentProcessedImage)
+        elif self.currentImage is not None:
+           self.mainDisplay.set_image(self.currentImage)
+       
         if self.mosaicingEnabled:
-           self.mosaicDisplay.set_image(self.imageProcessor.get_mosaic())       
+               self.mosaicDisplay.set_image(self.imageProcessor.get_mosaic())       
         
     
     def handle_changed_bundle_processing(self):

@@ -112,6 +112,15 @@ class GenericCameraInterface:
     
     def is_colour(self):
         return False
+    
+    
+    #### Working with Files
+    
+    def set_image_idx(self, idx):
+        pass
+    
+    def get_number_images(self):
+        return 1
 
 if __name__ == "__main__":
     print("Test mode not implemented")

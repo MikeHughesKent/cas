@@ -85,12 +85,13 @@ def init_cam_control_panel(self, controlPanelSize, calibrate_button = False):
     camControlPanel.setLayout(topLayout:=QVBoxLayout())
     camControlPanel.setMaximumWidth(controlPanelSize)
     camControlPanel.setMinimumWidth(controlPanelSize)    
-    
+    self.topLayout = topLayout
+
     self.mainMenu = QGroupBox("Main Menu")
-    topLayout.addWidget(self.mainMenu)
+    self.topLayout.addWidget(self.mainMenu)
     
     self.camControlGroupBox = QGroupBox("Camera Control")
-    topLayout.addWidget(self.camControlGroupBox)
+    self.topLayout.addWidget(self.camControlGroupBox)
     self.camLayout=QVBoxLayout()
     self.camControlGroupBox.setLayout(self.camLayout)   
   
@@ -105,7 +106,8 @@ def init_cam_control_panel(self, controlPanelSize, calibrate_button = False):
     inputFileLayout.setContentsMargins(0,0,0,0)
    
     inputFileLayout.addWidget(self.loadFileButton)
-
+    
+   
     self.mainMenuLayout = QVBoxLayout()
     self.mainMenu.setLayout(self.mainMenuLayout)
     self.mainMenuLayout.addLayout(self.mainMenuLayout)
@@ -174,7 +176,7 @@ def init_cam_control_panel(self, controlPanelSize, calibrate_button = False):
     self.camLayout.addWidget(self.camStatusPanel)
     
     
-    topLayout.addStretch()
+    self.topLayout.addStretch()
     
     
       

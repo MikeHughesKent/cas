@@ -64,6 +64,8 @@ class CAS_GUI(QMainWindow):
     authorName = "AOG"
     appName = "CAS"
     windowTitle = "Kent Camera Acquisition System"
+    logoFilename = None
+    iconFilename = None
         
     # Define available cameras interface and their display names in the drop-down menu
     camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
@@ -156,12 +158,16 @@ class CAS_GUI(QMainWindow):
         """
 
         # Create a standard layout, with panels arranged horizontally
-        self.layout, self.mainWidget = self.create_standard_layout(title = self.windowTitle)
+        self.create_standard_layout(title = self.windowTitle, iconFilename = self.iconFilename)
 
         # Add an image display. The reference to the display must be stored
         # in self.mainDisplay in order for handle_images to work.
         self.mainDisplay, self.mainDisplayFrame =  self.create_image_display()       
         self.layout.addLayout(self.mainDisplayFrame)
+        
+        # Add a scroll-bar to the image display which will be shown only when
+        # we load a file containing multiple images, so that we can scroll through them
+        self.create_file_index_control()
        
         # Create the panel with camera control options (e.g. exposure)
         self.camControlPanel = self.create_cam_control_panel(self.controlPanelSize) 
@@ -171,23 +177,44 @@ class CAS_GUI(QMainWindow):
         self.endBtn.setVisible(False)
         self.startBtn.setVisible(False)
         
+        # Logo
+        if self.logoFilename is not None:
+            self.create_logo_bar()
+        
         
     
-    def create_standard_layout(self, title = "Kent Camera Acquisition System"):
+    def create_standard_layout(self, title = "Kent Camera Acquisition System", iconFilename = None):
         """ Creates a standard layout where each panel is arranged horizontally.
         Specify the window title as an optional argument.
         Returns tuple of references to the layout and the widget it sits inside.
         """        
         
-        self.setWindowTitle(title)       
-        layout = QHBoxLayout()
+        self.setWindowTitle(title) 
         
-        widget = QWidget()
-        widget.setLayout(layout)
+        self.outerFrame = QFrame()
+        self.outerLayout = QVBoxLayout()
+        self.outerFrame.setLayout(self.outerLayout)
         
-        self.setCentralWidget(widget)
+        self.mainWidget = QWidget()
+        self.layout = QHBoxLayout()
+        self.mainWidget.setLayout(self.layout)
         
-        return layout, widget
+        self.layout.setSpacing(0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        
+        #self.outerLayout.setSpacing(0)
+        #self.outerLayout.setContentsMargins(0, 0, 0, 0)
+        
+        
+        self.outerLayout.addWidget(self.mainWidget)
+        
+        
+        self.setCentralWidget(self.outerFrame)
+        
+        if iconFilename is not None:
+            self.setWindowIcon(QtGui.QIcon(iconFilename))
+        
+        return 
 
     
     def create_image_display(self, name = "Image Display", statusBar = True, autoScale = True):
@@ -209,7 +236,37 @@ class CAS_GUI(QMainWindow):
         
         return display, displayFrame
        
+     
+    def create_logo_bar(self):
+        """ Adds logo at the bottom.
+        """
+        self.logobar = QHBoxLayout()        
+        logo = QLabel()
+        pixmap = QPixmap(self.logoFilename)
+        logo.setPixmap(pixmap)
+        self.logobar.addWidget(logo)
+        self.outerLayout.addLayout(self.logobar)
         
+        
+     
+    def create_file_index_control(self):
+        """ Creates a control to allow the frame from within an image stack to
+        be changed.
+        """
+        
+        self.fileIdxWidget = QWidget()
+        self.fileIdxWidgetLayout = QHBoxLayout()
+        self.fileIdxWidget.setLayout(self.fileIdxWidgetLayout)
+        self.fileIdxSlider = QSlider(QtCore.Qt.Horizontal)
+        self.fileIdxSlider.valueChanged[int].connect(self.handle_change_file_idx_slider)
+        self.fileIdxWidgetLayout.addWidget(QLabel("Frame No.:"))
+        self.fileIdxWidgetLayout.addWidget(self.fileIdxSlider)
+        self.mainDisplayFrame.addWidget(self.fileIdxWidget)        
+        self.fileIdxInput = QSpinBox()
+        self.fileIdxWidgetLayout.addWidget(self.fileIdxInput)
+        self.fileIdxInput.valueChanged[int].connect(self.handle_change_file_idx)
+        
+     
     def create_cam_control_panel(self, controlPanelSize = 150, **kwargs):  
         """ Creates a camera control panel. Optionally specify the
         width in pixels.
@@ -556,7 +613,7 @@ class CAS_GUI(QMainWindow):
         and image threads, loads in image and starts processor"""
         
         filename, filter = QFileDialog.getOpenFileName(parent=self, caption='Select file', filter='*.tif; *.png')
-        if filename is not None:
+        if filename != "":
             if self.camOpen:
                 try:
                     self.imageThread.stop()
@@ -566,10 +623,33 @@ class CAS_GUI(QMainWindow):
                     print("could not close camera")
             self.cam = FileInterface(filename = filename)
             if self.cam.is_file_open():
-                self.create_processors()    
+                if self.imageProcessor is None: self.create_processors()    
                 self.update_file_processing()
+                self.fileIdxInput.setMaximum(self.cam.get_number_images() - 1)
+                self.fileIdxSlider.setMaximum(self.cam.get_number_images() - 1)
+
             else:
-                QMessageBox.about(self, "Error", "Could not load file.")  
+                QMessageBox.about(self, "Error", "Could not load file.") 
+                
+
+    def handle_change_file_idx(self, event):
+        """ Handles change in the spinbox which controls which image in a 
+        multi-page tif is shown.
+        """
+        
+        if self.cam is not None:
+            self.cam.set_image_idx(self.fileIdxInput.value())
+            self.update_file_processing()
+        self.fileIdxSlider.setValue(self.fileIdxInput.value())
+        
+        
+        
+    def handle_change_file_idx_slider(self, event): 
+        """ Handles change in the slider which controls which image in a 
+        multi-page tif is shown.
+        """
+        self.fileIdxInput.setValue(self.fileIdxSlider.value())
+            
 
    
     def update_file_processing(self):
@@ -672,7 +752,7 @@ class CAS_GUI(QMainWindow):
                 filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
             except:
                 filename = None
-            if filename is not None:
+            if filename is not None and filename != "":
                 self.save_image_ac(im, filename)
             else:
                 QMessageBox.about(self, "Error", "Invalid filename.")  
@@ -692,7 +772,7 @@ class CAS_GUI(QMainWindow):
                 filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
             except:
                 filename = None
-            if filename is not None and self.currentImage is not None:
+            if filename is not None and self.currentImage is not None and filename != "":
                 self.save_image(im, filename)  
         else:
             QMessageBox.about(self, "Error", "There is no image to save.")  
@@ -773,7 +853,7 @@ class CAS_GUI(QMainWindow):
             filename = QFileDialog.getOpenFileName(self, 'Select background file to load:', '', filter='*.tif; *.png')[0]
         except:
             filename = None
-        if filename is not None:
+        if filename is not None and filename != "":
             try:
                 backIm = Image.open(filename)
             except:
@@ -848,6 +928,7 @@ class CAS_GUI(QMainWindow):
             self.endBtn.hide()    
             self.camStatusPanel.hide()
             self.inputFilePanel.show()
+            self.fileIdxWidget.show()
 
         else:
             # Show camera controls, hide file widgets
@@ -861,6 +942,8 @@ class CAS_GUI(QMainWindow):
                 self.endBtn.hide()
             self.camStatusPanel.show()
             self.inputFilePanel.hide()
+            self.fileIdxWidget.hide()
+
 
     
     def gui_save(self):
