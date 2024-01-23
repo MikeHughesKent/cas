@@ -17,55 +17,55 @@ provide further functionality.
 import sys 
 import os
 import inspect
-
-sys.path.append(os.path.abspath("widgets"))
-sys.path.append(os.path.abspath("cameras"))
-sys.path.append(os.path.abspath("threads"))
-
+from threading import Lock
+from pathlib import Path
 import time
-import numpy as np
+from datetime import datetime
 import math
-import matplotlib.pyplot as plt
 import multiprocessing as mp
 
-from PyQt5 import QtGui, QtCore, QtWidgets  
+import numpy as np
+import matplotlib.pyplot as plt
+
+from PyQt5 import QtGui, QtCore, QtWidgets   
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QPalette, QColor, QImage, QPixmap, QPainter, QPen, QGuiApplication
+from PyQt5.QtGui import QIcon, QPalette, QColor, QImage, QPixmap, QPainter, QPen, QGuiApplication
 from PyQt5.QtGui import QPainter, QBrush, QPen
 from PyQt5.QtXml import QDomDocument, QDomElement
-from DoubleSlider import *
 
 from PIL import Image
 
 import cv2 as cv
 
+sys.path.append(os.path.abspath("widgets"))
+sys.path.append(os.path.abspath("cameras"))
+sys.path.append(os.path.abspath("threads"))
+
+from DoubleSlider import *
 from ImageAcquisitionThread import ImageAcquisitionThread
 from image_display import ImageDisplay
-
-from cam_control_panel import *
 
 from ImageAcquisitionHandler import ImageAcquisitionHandler
 from FileInterface import FileInterface
 
-from datetime import datetime
-
-from threading import Lock
-
-from pathlib import Path
 
 cuda = True                 # Set to False to disable use of GPU
 
 
 class CAS_GUI(QMainWindow):
-    
+
+    windowTitle = "Kent Camera Acquisition System"
+
     # The values for the fields are stored in the registry using these IDs:
     authorName = "AOG"
     appName = "CAS"
-    windowTitle = "Kent Camera Acquisition System"
+
+    # Locations for icons etc. 
+    resPath = "..\\res"
     logoFilename = None
-    iconFilename = None
+    iconFilename = 'logo_256_red.png'
         
     # Define available cameras interface and their display names in the drop-down menu
     camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
@@ -80,7 +80,8 @@ class CAS_GUI(QMainWindow):
     
     # GUI display defaults
     imageDisplaySize = 300
-    controlPanelSize = 220
+    menuPanelSize = 300
+    optionsPanelSize = 300
     
     # Timer interval defualts (ms)
     GUIupdateInterval = 100
@@ -100,7 +101,11 @@ class CAS_GUI(QMainWindow):
     imageProcessor = None
     cam = None
     rawImage = None
-    settings = {}   
+    settings = {}  
+    panelsList = []
+    menuButtonsList = []
+    defaultBackgroundFile = "background.tif"
+    backgroundSource = ""
   
     
     
@@ -109,15 +114,22 @@ class CAS_GUI(QMainWindow):
         """
         
         super(CAS_GUI, self).__init__(parent)
-
-        # Create the GUI. This is generally over-ridden in sub-classes
-        self.create_layout()
         
+        self.defaultIcon = os.path.join(self.resPath, self.iconFilename)
+
+        
+        # Create the GUI. This is generally over-ridden in sub-classes
+        self.create_layout()        
         self.set_colour_scheme()
+        file= os.path.join(self.resPath, 'cas_modern.css')
+        with open(file,"r") as fh:
+            self.setStyleSheet(fh.read())
+            
         
         # Creates timers for GUI and camera acquisition
         self.create_timers()         
         self.acquisitionLock = Lock()
+
     
         # Load last values for GUI from registry
         self.settings = QtCore.QSettings(self.authorName, self.appName)  
@@ -126,13 +138,22 @@ class CAS_GUI(QMainWindow):
         # In case software is being used for first time, we can implement some
         # useful defaults (for example in a sub-class)
         self.apply_default_settings()
+        
 
         # Put the window in a sensible position
-        self.move(0,0)
+        self.resize(1200,800)
+        frameGm = self.frameGeometry()
+        screen = QtWidgets.QApplication.desktop().screenNumber(QtWidgets.QApplication.desktop().cursor().pos())
+        centerPoint = QtWidgets.QApplication.desktop().screenGeometry(screen).center()
+        frameGm.moveCenter(centerPoint)
+        self.move(frameGm.topLeft())
+        
         
         # Make sure the display is correct for whatever camera source 
         # we initiallylly have selected
-        self.handle_cam_source_change()
+        self.cam_source_changed()
+        self.show()
+
         
         
     def apply_default_settings(self):
@@ -158,70 +179,405 @@ class CAS_GUI(QMainWindow):
         """
 
         # Create a standard layout, with panels arranged horizontally
-        self.create_standard_layout(title = self.windowTitle, iconFilename = self.iconFilename)
+        self.create_standard_layout(title = self.windowTitle, iconFilename = self.defaultIcon)
 
-        # Add an image display. The reference to the display must be stored
-        # in self.mainDisplay in order for handle_images to work.
-        self.mainDisplay, self.mainDisplayFrame =  self.create_image_display()       
-        self.layout.addLayout(self.mainDisplayFrame)
+
+        # Create Main Menu Area
+        self.menuPanel = QWidget(objectName="menu_panel")
+        self.menuPanel.setMinimumSize(self.menuPanelSize, 400)
+        self.menuPanel.setMaximumWidth(self.menuPanelSize)
+        self.menuLayout = QVBoxLayout()
+        self.menuPanel.setLayout(self.menuLayout)
+        self.layout.addWidget(self.menuPanel)
         
-        # Add a scroll-bar to the image display which will be shown only when
-        # we load a file containing multiple images, so that we can scroll through them
-        self.create_file_index_control()
+        
+        # Add Main Menu Buttons
+        self.liveButton = self.create_menu_button("Live Imaging", QIcon(os.path.join(self.resPath, 'icons', 'play_white.svg')), self.live_button_clicked, True)
+        self.sourceButton = self.create_menu_button("Image Source", QIcon(os.path.join(self.resPath, 'icons', 'camera_white.svg')), self.source_button_clicked, True, menuButton = True)
+        self.saveAsButton = self.create_menu_button("Save Image As", QIcon(os.path.join(self.resPath, 'icons', 'save_white.svg')), self.save_as_button_clicked, False)
+        self.snapButton = self.create_menu_button("Snap Image", QIcon(os.path.join(self.resPath, 'icons', 'download_white.svg')), self.snap_button_clicked, False )
+        self.recordButton = self.create_menu_button("Record", QIcon(os.path.join(self.resPath, 'icons', 'film_white.svg')), self.record_button_clicked, False )
+        self.settingsButton = self.create_menu_button("Settings", QIcon(os.path.join(self.resPath, 'icons', 'settings_white.svg')), self.settings_button_clicked, True, menuButton = True)
+        self.menuLayout.addStretch()
+        self.exitButton = self.create_menu_button("Exit", QIcon(os.path.join(self.resPath, 'icons', 'exit_white.svg')), self.exit_button_clicked, False)
+
+
+        # Create Expanding Menu Area
+        self.optionsScrollArea = QScrollArea()
+        self.optionsScrollArea.setContentsMargins(0, 0, 0, 0)
+        self.optionsScrollArea.setWidgetResizable(True)
+        self.optionsScrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        
+        self.optionsPanel = QWidget(objectName = "options_panel")
+        self.optionsPanelLayout = QVBoxLayout()
+        self.optionsPanel.setContentsMargins(0, 0, 0, 0)
+        self.optionsPanelLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.optionsPanel.setLayout(self.optionsPanelLayout)        
+        self.optionsPanelLayout.addWidget(self.optionsScrollArea)
+        self.optionsPanel.setContentsMargins(0,0,0,0)
+        self.optionsPanel.setMinimumWidth(self.optionsPanelSize)
+        self.optionsPanel.setMaximumWidth(self.optionsPanelSize)
+        
+        self.multiMenu = QWidget()
+        self.multiMenu.setContentsMargins(0,0,0,0)
+        self.menus = QVBoxLayout()
+        self.multiMenu.setLayout(self.menus)
+        
+        self.optionsScrollArea.setWidget(self.multiMenu)
+        self.optionsPanel.setVisible(False)
+        
+        
+        # Create Menu Panels
+        self.settingsPanel = self.create_settings_panel()
+        self.sourcePanel = self.create_source_panel()
+              
+
+        # Image Control Area
+        self.contentPanel = QWidget()
+        self.contentLayout = QHBoxLayout()
+        self.contentPanel.setLayout(self.contentLayout)
+        self.contentPanel.setContentsMargins(0, 0, 0, 0)
+        self.contentLayout.setContentsMargins(0, 0, 0, 0)
+        #self.contentPanel.setStyleSheet("QWidget{padding:20px;margin:20px;background-color:rgba(40,40,40,255);}")
+
        
-        # Create the panel with camera control options (e.g. exposure)
-        self.camControlPanel = self.create_cam_control_panel(self.controlPanelSize) 
-        self.layout.addWidget(self.camControlPanel)
-        
-        # Make the start button visible and end button invisible
-        self.endBtn.setVisible(False)
-        self.startBtn.setVisible(False)
+        self.mainDisplay, self.mainDisplayFrame = self.create_image_display()    
+
+        self.contentVertical = QWidget()
+        self.contentVertical.setContentsMargins(0, 0, 0, 0)
+        self.contentVerticalLayout = QVBoxLayout()    
+        self.contentVertical.setLayout(self.contentVerticalLayout)
+
+        self.contentVerticalLayout.addWidget(self.mainDisplay)
+        self.contentLayout.addWidget(self.contentVertical)        
+                
+        self.layout.addWidget(self.optionsPanel)
+        self.layout.addWidget(self.contentPanel)
         
         # Logo
-        if self.logoFilename is not None:
-            self.create_logo_bar()
+        # if self.logoFilename is not None:
+        #    self.create_logo_bar()
         
         
+    def create_menu_button(self, text = "", icon = None, handler = None, hold = False, menuButton = False, position = None):
+        """ Creates a main menu button.
+        
+        Keyword Arguments:
+            text      : str
+                        button text (default is no text)
+            icon      : QIcon
+                        icon to place on button (defualt is no icon)
+            handler   : function
+                        function to call when button is clicked (defualt is no handler)
+            hold      : boolean
+                        if True, button is checkable, i.e. can toggle on and off. 
+                        (defualt is False)
+            menuButton : boolean
+                         if true, will be registered so that button will be unchecked                         
+                         when another menu is opened
+            position   : int
+                         is specified, button will be inserted at this position from top             
+        Returns:
+            QButton : reference to button 
+        """    
+        
+        button = QPushButton(" " + text)
+        if icon is not None: button.setIcon(icon)
+        if handler is not None: button.clicked.connect(handler)
+        button.setCheckable(hold)
+
+        if position is None:
+            self.menuLayout.addWidget(button)
+        else:
+            self.menuLayout.insertWidget(position, button)
+        
+        if menuButton:
+            self.menuButtonsList.append(button)
+        
+        return button
+    
     
     def create_standard_layout(self, title = "Kent Camera Acquisition System", iconFilename = None):
-        """ Creates a standard layout where each panel is arranged horizontally.
-        Specify the window title as an optional argument.
-        Returns tuple of references to the layout and the widget it sits inside.
+        """ Sets window title and icon, and creates main widget
+        Keyword Arguments:
+            title        : str
+                           main window title, default is "Kent Camera Acquisition System"
+            iconFilename : str      
+                           path to application icon 
         """        
         
         self.setWindowTitle(title) 
         
-        self.outerFrame = QFrame()
-        self.outerLayout = QVBoxLayout()
-        self.outerFrame.setLayout(self.outerLayout)
-        
-        self.mainWidget = QWidget()
+        self.main_widget = QWidget()
         self.layout = QHBoxLayout()
-        self.mainWidget.setLayout(self.layout)
+        self.main_widget.setLayout(self.layout)
         
         self.layout.setSpacing(0)
         self.layout.setContentsMargins(0, 0, 0, 0)
         
-        #self.outerLayout.setSpacing(0)
-        #self.outerLayout.setContentsMargins(0, 0, 0, 0)
-        
-        
-        self.outerLayout.addWidget(self.mainWidget)
-        
-        
-        self.setCentralWidget(self.outerFrame)
+        self.setCentralWidget(self.main_widget)
         
         if iconFilename is not None:
             self.setWindowIcon(QtGui.QIcon(iconFilename))
         
         return 
 
+
+    def panel_helper(self, title = None):
+        """ Helper to start off creation of a new expanding menu panel.
+        
+        Keyword arguments:
+            title     : str
+                        Header to go at top of panel
+                        
+        Returns:
+            tuple of widget, layout. Add child widgets to the layout.
+        """
+        panel = QWidget()
+        layout = QVBoxLayout()
+        panel.setLayout(layout)
+        
+        if title is not None:
+            titleLabel = QLabel(title)
+            titleLabel.setProperty("header", "true")
+            layout.addWidget(titleLabel)
+            
+        self.menus.addWidget(panel)
+        self.panelsList.append(panel)    
+            
+        return panel, layout    
+        
+        
+    def create_settings_panel(self):
+        """ Creates expanding panel for settings. Override to create a 
+        custom settings panel. The function must return a QWidget which
+        contains all widgets in the panel.
+        """
+        
+        panel, self.settingsLayout = self.panel_helper(title = "Settings")
+        
+        self.add_settings(self.settingsLayout)
+                
+        self.settingsLayout.addStretch()        
+        
+        return panel
+    
+    
+    
+    def add_settings(self, settingsLayout):
+        """ Adds options to the settings panels. Override this function in 
+        a sub-class to add custom options.
+        """
+        
+        text = "This is a place holder. Applications derived from CAS-GUI can put their specific settings here."
+        self.settingsPlaceholder = QLabel(text)
+        self.settingsPlaceholder.setWordWrap(True)
+        self.settingsPlaceholder.setMaximumWidth(200)
+        settingsLayout.addWidget(self.settingsPlaceholder)
+    
+    
+    def create_source_panel(self):
+        """ Creates expanding panel for camera source.
+        """
+        
+        # Initialise a panel
+        widget, self.sourceLayout = self.panel_helper(title = "Image Source")
+                
+        # Source Selection           
+        self.camSourceCombo = QComboBox(objectName = 'camSourceCombo')
+        self.camSourceCombo.addItems(self.camNames)
+        self.sourceLayout.addWidget(QLabel('Camera Source'))
+        self.sourceLayout.addWidget(self.camSourceCombo)
+        self.camSourceCombo.currentIndexChanged.connect(self.cam_source_changed)
+
+        # Camera Settings Panel 
+        self.camSettingsPanel = QWidget()
+        self.camSettingsLayout = QVBoxLayout()
+        self.camSettingsPanel.setLayout(self.camSettingsLayout)
+        self.exposureInput = QDoubleSpinBox(objectName = 'exposureInput')
+        self.exposureInput.setMaximum(0)
+        self.exposureInput.setMaximum(100) 
+        self.exposureInput.valueChanged[float].connect(self.exposure_slider_changed)
+        self.exposureInput.setKeyboardTracking(False)
+      
+        self.exposureSlider = DoubleSlider(QtCore.Qt.Horizontal, objectName = 'exposureSlider')
+        self.exposureSlider.setTickPosition(QSlider.TicksBelow)
+        self.exposureSlider.setTickInterval(10)
+        self.exposureSlider.setMaximum(100)
+        self.exposureSlider.doubleValueChanged[float].connect(self.exposureInput.setValue)
+        
+        self.gainSlider = QSlider(QtCore.Qt.Horizontal, objectName = 'gainSlider')
+        self.gainSlider.setTickPosition(QSlider.TicksBelow)
+        self.gainSlider.setTickInterval(10)
+        self.gainSlider.setMaximum(100)
+        self.gainSlider.valueChanged[int].connect(self.handle_gain_slider)
+        
+        self.gainInput = QSpinBox(objectName = 'gainInput')
+        self.gainInput.setMaximum(0)
+        self.gainInput.setMaximum(100)
+        self.gainInput.valueChanged[int].connect(self.gainSlider.setValue)
+        self.gainInput.setKeyboardTracking(False)
+       
+        self.frameRateInput = QDoubleSpinBox(objectName = 'frameRateInput')
+        self.frameRateInput.setMaximum(0)
+        self.frameRateInput.setMaximum(100)
+        self.frameRateInput.valueChanged[float].connect(self.frame_rate_slider_changed)
+        self.frameRateInput.setKeyboardTracking(False)
+
+        self.frameRateSlider = DoubleSlider(QtCore.Qt.Horizontal, objectName = 'frameRateSlider')
+        self.frameRateSlider.setTickPosition(QSlider.TicksBelow)
+        self.frameRateSlider.setTickInterval(100)
+        self.frameRateSlider.setMaximum(100)
+        self.frameRateSlider.doubleValueChanged[float].connect(self.frameRateInput.setValue)
+                
+        self.camSettingsLayout.addWidget(QLabel('Exposure:'))
+        exposureLayout = QHBoxLayout()
+        exposureLayout.addWidget(self.exposureSlider)
+        exposureLayout.addWidget(self.exposureInput)
+        self.exposureInput.setMinimumWidth(90)
+        self.camSettingsLayout.addLayout(exposureLayout)
+        
+        self.camSettingsLayout.addWidget(QLabel('Gain:'))
+        gainLayout = QHBoxLayout()
+        gainLayout.addWidget(self.gainSlider)
+        gainLayout.addWidget(self.gainInput)
+        self.gainInput.setMinimumWidth(90)
+        self.camSettingsLayout.addLayout(gainLayout)
+
+        self.camSettingsLayout.addWidget(QLabel('Frame Rate:'))
+        frameRateLayout = QHBoxLayout()
+        frameRateLayout.addWidget(self.frameRateSlider)
+        frameRateLayout.addWidget(self.frameRateInput)
+        self.frameRateInput.setMinimumWidth(90)
+        self.camSettingsLayout.addLayout(frameRateLayout)
+
+        self.camSettingsLayout.setContentsMargins(0,0,0,0)
+        self.sourceLayout.addWidget(self.camSettingsPanel)
+         
+        # File input Sub-panel
+        self.inputFilePanel = QWidget()
+        inputFileLayout = QVBoxLayout()
+
+        self.inputFilePanel.setLayout(inputFileLayout)
+        inputFileLayout.setContentsMargins(0,0,0,0)
+        
+        self.filename_label = QLabel()
+        self.filename_label.setWordWrap(True)
+        self.filename_label.setProperty("status", "true")
+        inputFileLayout.addWidget(self.filename_label)
+        
+        self.loadFileButton = QPushButton('Load File') 
+        self.loadFileButton.clicked.connect(self.load_file_clicked)
+
+        inputFileLayout.addWidget(self.loadFileButton)
+        
+        self.fileIdxWidget = QWidget()
+        self.fileIdxWidgetLayout = QVBoxLayout()
+        self.fileIdxWidgetLayout.addWidget(QLabel("Frame No.:"))
+        self.fileIdxWidget.setLayout(self.fileIdxWidgetLayout)
+        self.fileIdxWidget.setContentsMargins(0,0,0,0)
+        
+        self.fileIdxControl = QWidget()
+        self.fileIdxControl.setContentsMargins(0,0,0,0)
+        self.fileIdxControlLayout = QHBoxLayout()
+        self.fileIdxControl.setLayout(self.fileIdxControlLayout)
+        self.fileIdxWidgetLayout.addWidget(self.fileIdxControl)
+        self.fileIdxSlider = QSlider(QtCore.Qt.Horizontal)
+        self.fileIdxSlider.valueChanged[int].connect(self.file_index_slilder_changed)
+        self.fileIdxControlLayout.addWidget(self.fileIdxSlider)
+        self.fileIdxInput = QSpinBox()
+        
+        self.fileIdxControlLayout.addWidget(self.fileIdxInput)
+        self.fileIdxControlLayout.addWidget(self.fileIdxControl)
+        
+        self.fileIdxInput.valueChanged[int].connect(self.file_index_changed)
+        
+        inputFileLayout.addWidget(self.fileIdxWidget)        
+        self.fileIdxWidget.hide()
+                
+        self.sourceLayout.addWidget(self.inputFilePanel)
+
+
+        # Camera Status
+        self.bufferFillLabel = QLabel()
+        self.frameRateLabel = QLabel()
+        self.processRateLabel = QLabel()
+        self.camStatusPanel = QWidget()
+        self.camStatusPanel.setLayout(camStatusLayout:=QGridLayout())
+           
+        camStatusLayout.addWidget(self.bufferFillLabel,1,1)
+        camStatusLayout.addWidget(self.frameRateLabel,3,1)
+        camStatusLayout.addWidget(self.processRateLabel,4,1)
+      
+        camStatusLayout.addWidget(QLabel('Acq. Buffer:'),1,0)
+        camStatusLayout.addWidget(QLabel('Acquisition fps:'),3,0)
+        camStatusLayout.addWidget(QLabel('Processing fps:'),4,0)
+        
+        self.camSettingsLayout.addWidget(self.camStatusPanel)        
+    
+        # Add stretch at bottom
+        self.sourceLayout.addStretch()
+        
+        return widget
+   
+    
+    def expanding_menu_clicked(self, button, menu):
+        """ Handles the press of a menu button which toggles the visibility 
+        of a menu.
+        
+        Arguments:
+            button  : QPushButton
+                      Reference to the button
+            menu    : QWidget
+                      Reference to the menu
+                      
+                      
+        Returns:
+            True if menu has been opened, False if it has been closed.              
+        """              
+                      
+        if not menu.isVisible():
+           self.hide_all_control_panels()
+           self.optionsPanel.setVisible(True)
+           menu.setVisible(True)
+           button.setChecked(True)
+           return True
+        else:
+           self.hide_all_control_panels()
+           button.setChecked(False) 
+           return False
+           
+           
+
+    def hide_all_control_panels(self): 
+        """ Utility function to close all sub-menus.
+        """
+        self.optionsPanel.setVisible(False)
+
+        for button in self.menuButtonsList:
+            button.setChecked(False)
+
+        for panel in self.panelsList:
+            panel.setVisible(False)
+         
+
     
     def create_image_display(self, name = "Image Display", statusBar = True, autoScale = True):
-        """ Adds an image display to the standard layout. Returns tuple of reference to image
-        display widget and reference to container widget in which this sits. These references
-        must be kept in scope.
+        """ Adds an image display to the standard layout. 
         
+        Keyword Arguments:
+            name : str
+                   Object name of ImageDisplayQT widget, default is "Image Display"
+            statusBar : Boolean
+                        If True (default), image display has status bar
+            autoScale : Boolean 
+                        If True (default), image values will be autoscaled.
+                        
+        Returns:
+            tuple of reference to image  display widget and reference to 
+            container widget in which this sits. These references should be 
+            kept in scope.
         """
         
         # Create an instance of an ImageDisplay with the required properties
@@ -229,12 +585,22 @@ class CAS_GUI(QMainWindow):
         display.isStatusBar = statusBar
         display.autoScale = autoScale
         
-        # Create an outer widget to put the display frame in
-        displayFrame = QVBoxLayout()
-        displayFrame.addWidget(display)
-
         
-        return display, displayFrame
+        # Create an outer widget to put the display frame in
+        displayFrame = QWidget()
+        displayFrame.setLayout(layout:=QHBoxLayout())
+        layout.addWidget(display)
+
+        frameOuter = QWidget()
+        frameOuterLayout = QVBoxLayout()
+        frameOuter.setLayout(frameOuterLayout)
+        frameOuterLayout.addWidget(displayFrame)
+
+        policy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+       
+        displayFrame.setSizePolicy(policy)
+        
+        return display, frameOuter
        
      
     def create_logo_bar(self):
@@ -246,8 +612,7 @@ class CAS_GUI(QMainWindow):
         logo.setPixmap(pixmap)
         self.logobar.addWidget(logo)
         self.outerLayout.addLayout(self.logobar)
-        
-        
+                
      
     def create_file_index_control(self):
         """ Creates a control to allow the frame from within an image stack to
@@ -258,41 +623,35 @@ class CAS_GUI(QMainWindow):
         self.fileIdxWidgetLayout = QHBoxLayout()
         self.fileIdxWidget.setLayout(self.fileIdxWidgetLayout)
         self.fileIdxSlider = QSlider(QtCore.Qt.Horizontal)
-        self.fileIdxSlider.valueChanged[int].connect(self.handle_change_file_idx_slider)
+        self.fileIdxSlider.valueChanged[int].connect(self.file_index_slilder_changed)
         self.fileIdxWidgetLayout.addWidget(QLabel("Frame No.:"))
         self.fileIdxWidgetLayout.addWidget(self.fileIdxSlider)
-        self.mainDisplayFrame.addWidget(self.fileIdxWidget)        
+        self.sourceLayout.addWidget(self.fileIdxWidget)        
         self.fileIdxInput = QSpinBox()
         self.fileIdxWidgetLayout.addWidget(self.fileIdxInput)
-        self.fileIdxInput.valueChanged[int].connect(self.handle_change_file_idx)
+        self.fileIdxInput.valueChanged[int].connect(self.file_index_changed)
         
      
-    def create_cam_control_panel(self, controlPanelSize = 150, **kwargs):  
-        """ Creates a camera control panel. Optionally specify the
-        width in pixels.
-        Returns a reference to the control panel. This reference must be kept.
-        """
-
-        controlPanel = init_cam_control_panel(self, controlPanelSize, **kwargs) 
-        return controlPanel
-        
-        
-
+    
     def create_processors(self):
         """Subclasses should overload this to create processing threads."""
         pass
-      
+    
+    
+    def processing_options_changed(self):
+        """Subclasses should overload this to handle procssing changes"""
+        pass
+    
 
-    def set_colour_scheme(self, scheme = 'dark'):
-        """ Sets the colour scheme for the GUI. Currently only supports the
-        default 'dark' scheme and 'black' scheme.
+    def set_colour_scheme(self):
+        """ Sets the colour scheme for the GUI.
         """
+        
         QtWidgets.QApplication.setStyle("Fusion")
-
         palette = QtWidgets.QApplication.palette()
-
+        palette.setColor(QPalette.Base, QColor(255, 255, 255))      
+        palette.setColor(QPalette.Window, QColor(60, 60, 90))
         palette.setColor(QPalette.WindowText, Qt.white)
-        palette.setColor(QPalette.Base, QColor(25, 25, 25))
         palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
         palette.setColor(QPalette.ToolTipBase, Qt.black)
         palette.setColor(QPalette.ToolTipText, Qt.white)
@@ -305,36 +664,9 @@ class CAS_GUI(QMainWindow):
         palette.setColor(QPalette.HighlightedText, Qt.black)
         palette.setColor(QPalette.Disabled, QPalette.Light, Qt.black)
         palette.setColor(QPalette.Disabled, QPalette.Shadow, QColor(12, 15, 16))
-            
-        if scheme == 'dark':
-            palette.setColor(QPalette.Window, QColor(53, 53, 53))
-        elif scheme == 'black':
-            palette.setColor(QPalette.Window, QColor(0, 0, 0))
-
-        QtWidgets.QApplication.setPalette(palette)
         
-    
-    def create_control_panel_container(self,name = "Menu", panelSize = 200, compact = True):
-        """
-        Creates a panel for menu options.
-        """
+        QtWidgets.QApplication.setPalette(palette)       
         
-        controlPanel = QWidget()
-        controlPanel.setLayout(topLayout:=QVBoxLayout())
-        controlPanel.setMaximumWidth(panelSize)
-        controlPanel.setMinimumWidth(panelSize) 
-        
-        widget = QGroupBox(name)
-        topLayout.addWidget(widget)
-        
-        layout=QVBoxLayout()
-        widget.setLayout(layout) 
-
-        if compact:
-            topLayout.addStretch()
-        
-        return controlPanel, widget, layout
-    
     
 
     def handle_images(self):
@@ -423,9 +755,9 @@ class CAS_GUI(QMainWindow):
        
         
     def update_camera_status(self):
-       """ Updates real-time camera frame rate display. If the camera control
-       panel has not been created this will cause an error, so this function
-       must be overridden.
+       """ Updates real-time camera frame rate display. If the source
+       panel has not been created this will cause an error, in which case this 
+       function must be overridden.
        """                 
       
        if self.imageProcessor is not None:
@@ -445,7 +777,7 @@ class CAS_GUI(QMainWindow):
     def update_camera_ranges_and_values(self):       
         """ After updating a camera parameter, the valid range of other parameters
         might change (e.g. frame rate may affect allowed exposures). Call this
-        to update the GUI with correct ranges.
+        to update the GUI with correct ranges and the current values.
         """    
         if self.cam is not None:
             if self.cam.get_exposure() is not None:
@@ -521,7 +853,7 @@ class CAS_GUI(QMainWindow):
        
                      
     def update_camera_from_GUI(self):
-        """ Write the currently selecte frame rate, exposure and gain to the camera
+        """ Write the currently selected frame rate, exposure and gain to the camera
         """
         if self.camOpen:             
             self.cam.set_frame_rate(self.frameRateInput.value())
@@ -532,15 +864,12 @@ class CAS_GUI(QMainWindow):
     def update_GUI(self):
         """ Update the image(s) and the status displays
         """
-        
         self.update_camera_status()
-        #t1 = time.perf_counter()
         self.update_image_display()
-        #print(time.perf_counter() - t1)
-        if self.recording is True:
-            self.recordBtn.setText('Stop Recording')
-        else:
-            self.recordBtn.setText('Start Recording')
+       # if self.recording is True:
+       #     self.recordBtn.setText('Stop Recording')
+       # else:
+       #     self.recordBtn.setText('Start Recording')
         
     
     def start_acquire(self):       
@@ -548,7 +877,6 @@ class CAS_GUI(QMainWindow):
         and starting it. The image acquisition thread grabs images to a queue
         which can then be retrieved by the GUI for processing/display
         """
-        
         # Take the camera source selected in the GUI
         self.camSource = self.camSources[self.camSourceCombo.currentIndex()]
         
@@ -564,7 +892,9 @@ class CAS_GUI(QMainWindow):
             self.cam = self.imageThread.get_camera()
             self.cam.pre_load(-1)
         else:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
             self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock)
+            QApplication.restoreOverrideCursor()
 
 
         # Sub-classes can overload create_processor to create processing threads
@@ -586,9 +916,11 @@ class CAS_GUI(QMainWindow):
             self.imageTimer.start(self.imagesUpdateInterval)
             
             # Flip which buttons will work
-            self.endBtn.setVisible(True)
-            self.startBtn.setVisible(False)
-      
+            self.liveButton.setChecked(True)
+        else:
+            self.liveButton.setChecked(False)
+
+            
 
     def end_acquire(self):  
         """ Stops the image acquisition by stopping the image acquirer thread
@@ -598,15 +930,67 @@ class CAS_GUI(QMainWindow):
             self.imageTimer.stop()
             self.imageThread.stop()
             self.camOpen = False
-            self.endBtn.setVisible(False)
-            self.startBtn.setVisible(True)
+            self.liveButton.setChecked(False)
+            if self.cam is not None:
+                self.cam.close_camera()
+       # self.currentImage = np.zeros((10,10))
        
-        
-    def load_file_click(self):
-        """ Handles a click of the load file button.
+        self.filename_label.setText("")
+    
+    def snap(self):    
+        """ Saves current raw, processed and background images, if they
+        exist, to timestamped files in the snaps folder."""
+   
+        now = datetime.now()
+
+        rawFile = Path(now.strftime('../snaps/%Y_%m_%d_%H_%M_%S_raw.tif'))
+        procFile = Path(now.strftime('../snaps/%Y_%m_%d_%H_%M_%S_proc.tif'))
+        backFile = Path(now.strftime('../snaps/%Y_%m_%d_%H_%M_%S_back.tif'))
+     
+        if self.currentImage is not None:
+            self.save_image(self.currentImage, rawFile)             
+            if self.currentProcessedImage is not None:
+                self.save_image_ac(self.currentProcessedImage, procFile)  
+            if self.backgroundImage is not None:
+                self.save_image(self.backgroundImage, backFile)
+        else:  
+            QMessageBox.about(self, "Error", "There is no image to save.")   
+            
+
+    def save_as(self):
+        """ Requests filename then saves current processed image. If there
+        is no processed image, try to save raw image instead.
         """
-        self.load_file()
+        im = self.currentProcessedImage
+        if im is not None:
+            try:
+                filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
+            except:
+                filename = None
+            if filename is not None and filename != "":
+                self.save_image_ac(im, filename)
+            else:
+                QMessageBox.about(self, "Error", "Invalid filename.")  
+
+        else:
+            # If there is no processed image, try saving the raw image
+            self.save_raw_as(0)
+
+    def save_raw_as(self):
+        """ Requests filename then saves current raw image.
+        """
         
+        im = self.currentImage
+        if im is not None:
+            try:
+                filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
+            except:
+                filename = None
+            if filename is not None and self.currentImage is not None and filename != "":
+                self.save_image(im, filename)  
+        else:
+            QMessageBox.about(self, "Error", "There is no image to save.")  
+            
         
     def load_file(self):        
         """Gets a filename. If it is valid, switches to file mode, stops timers 
@@ -623,16 +1007,21 @@ class CAS_GUI(QMainWindow):
                     print("could not close camera")
             self.cam = FileInterface(filename = filename)
             if self.cam.is_file_open():
-                if self.imageProcessor is None: self.create_processors()    
+                if self.imageProcessor is None: self.create_processors()   
                 self.update_file_processing()
-                self.fileIdxInput.setMaximum(self.cam.get_number_images() - 1)
-                self.fileIdxSlider.setMaximum(self.cam.get_number_images() - 1)
+                if self.cam.get_number_images() > 1:
+                    self.fileIdxInput.setMaximum(self.cam.get_number_images() - 1)
+                    self.fileIdxSlider.setMaximum(self.cam.get_number_images() - 1)
+                    self.fileIdxWidget.show()
+                else:    
+                    self.fileIdxWidget.hide()
+                self.filename_label.setText(filename)
 
             else:
                 QMessageBox.about(self, "Error", "Could not load file.") 
-                
+        
 
-    def handle_change_file_idx(self, event):
+    def file_index_changed(self, event):
         """ Handles change in the spinbox which controls which image in a 
         multi-page tif is shown.
         """
@@ -644,7 +1033,7 @@ class CAS_GUI(QMainWindow):
         
         
         
-    def handle_change_file_idx_slider(self, event): 
+    def file_index_slilder_changed(self, event): 
         """ Handles change in the slider which controls which image in a 
         multi-page tif is shown.
         """
@@ -659,27 +1048,17 @@ class CAS_GUI(QMainWindow):
         updates currentProcessedImage, and then refreshes displayed
         images and GUI  
         """  
-        #t1 = time.perf_counter()
         try:
             self.currentImage = self.cam.get_image()
-            #print("Time to get image:", time.perf_counter() - t1)
         except:
             pass
-        #t1 = time.perf_counter()
         if self.imageProcessor is not None and self.currentImage is not None:
             self.currentProcessedImage = self.imageProcessor.process_frame(self.currentImage)
-        #print("Time to process image:", time.perf_counter() - t1)
-
-        #t1 = time.perf_counter()
         self.update_image_display()
-        #print("Time to update display", time.perf_counter() - t1)
-
-        #t1 = time.perf_counter()
         self.update_GUI()
-        #print("Time to update GUI", time.perf_counter() - t1)
 
     
-    def handle_exposure_slider(self):
+    def exposure_slider_changed(self):
         """ Called when exposure slider is moved. Updates the camera exposure.
         """
         self.exposureSlider.setValue(self.exposureInput.value())
@@ -697,7 +1076,7 @@ class CAS_GUI(QMainWindow):
             self.update_camera_ranges()
           
              
-    def handle_frame_rate_slider(self):
+    def frame_rate_slider_changed(self):
         """ Called when frame rate slider is moved. Updates the camera exposure.
         """
         self.frameRateSlider.setValue(self.frameRateInput.value())
@@ -720,105 +1099,85 @@ class CAS_GUI(QMainWindow):
         for child in active:
             child.terminate()
            
-    ### Button Click Handlers        
+            
+    ### Button Click Handlers   
 
-    def load_background_click(self, event):
-        self.load_background()
+    def load_file_clicked(self):
+        self.load_file()     
+
+    def load_background_clicked(self, event):
+        self.load_background()        
         
-        
-    def load_background_from_click(self, event):
-        self.load_background_from()     
-        
+    def load_background_from_clicked(self, event):
+        self.load_background_from() 
                 
-    def save_background_click(self,event):
+    def save_background_clicked(self,event):
         self.save_background()
         
-        
-    def save_background_as_click(self,event):
+    def save_background_as_clicked(self,event):
         self.save_background_as()
         
-        
-    def acquire_background_click(self,event):
+    def acquire_background_clicked(self,event):
         self.acquire_background()
-    
-    
-    def save_image_as_button_click(self, event):
-        """ Requests filename then saves current processed image. If there
-        is no processed image, try to save raw image instead.
-        """
-        im = self.currentProcessedImage
-        if im is not None:
-            try:
-                filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
-            except:
-                filename = None
-            if filename is not None and filename != "":
-                self.save_image_ac(im, filename)
-            else:
-                QMessageBox.about(self, "Error", "Invalid filename.")  
-
-        else:
-            # If there is no processed image, try saving the raw image
-            self.save_raw_as_button_click(0)
-
-    
-    def save_raw_as_button_click(self, event):
-        """ Requests filename then saves current raw image.
-        """
         
-        im = self.currentImage
-        if im is not None:
-            try:
-                filename = QFileDialog.getSaveFileName(self, 'Select filename to save to:', '', filter='*.tif')[0]
-            except:
-                filename = None
-            if filename is not None and self.currentImage is not None and filename != "":
-                self.save_image(im, filename)  
+        
+    def live_button_clicked(self):
+        """ Handles press of 'Live Imaging' button.
+        """
+        if self.camOpen:
+            self.end_acquire()
         else:
-            QMessageBox.about(self, "Error", "There is no image to save.")  
+            self.start_acquire()       
+        
 
+    def settings_button_clicked(self):
+        """ Handles press of 'Settings' button.
+        """
+        self.expanding_menu_clicked(self.settingsButton, self.settingsPanel)
+        
+        
+    def source_button_clicked(self):
+        """ Handles press of 'Source' button.
+        """
+        self.expanding_menu_clicked(self.sourceButton, self.sourcePanel)
+  
+
+    def exit_button_clicked(self):
+        """ Handles press of 'Exit' button.
+        """
+        self.close()     
+    
+    
+    def save_as_button_clicked(self, event):
+        self.save_as()
 
     
+    def save_raw_as_button_clicked(self, event):
+        self.save_raw_as()
 
-    def snap_image_button_click(self, event):
-        """ Saves current raw, processed and background images, if they
-        exist, to timestamped files in the snaps folder."""
-      
-        now = datetime.now()
- 
-        rawFile = Path(now.strftime('../snaps/%Y_%m_%d_%H_%M_%S_raw.tif'))
-        procFile = Path(now.strftime('../snaps/%Y_%m_%d_%H_%M_%S_proc.tif'))
-        backFile = Path(now.strftime('../snaps/%Y_%m_%d_%H_%M_%S_back.tif'))
-        
-        if self.currentImage is not None:
-            self.save_image(self.currentImage, rawFile)             
-            if self.currentProcessedImage is not None:
-                self.save_image_ac(self.currentProcessedImage, procFile)  
-            if self.backgroundImage is not None:
-                self.save_image(self.backgroundImage, backFile)
-        else:  
-            QMessageBox.about(self, "Error", "There is no image to save.")  
+
+    def snap_button_clicked(self, event):
+        self.snap()
 
      
- 
 
-    def record_click(self):
-        """ Handles click of start record button.
+    def record_button_clicked(self):
+        """ Handles click of record button.
         """
         
         if self.recording is False:
             self.start_recording()
-            self.recordBtn.setText('Stop Recording')
+            self.recordButton.setChecked(True)
         else:
             self.stop_recording()
-            self.recordBtn.setText('Record')
+            self.recordButton.setChecked(False)
 
         self.update_GUI()
         
     
     
     
-    def save_image_ac(self,img, fileName):
+    def save_image_ac(self, img, fileName):
         """ Utility function to save 16 bit image 'img' to file 'fileName' with autoscaling """   
         if fileName:
             img = img.astype('float')
@@ -828,23 +1187,24 @@ class CAS_GUI(QMainWindow):
             im.save(fileName)
         
             
-    def save_image(self,img, fileName):
+    def save_image(self, img, fileName):
         """ Utility function to save image 'img' to file 'fileName' with no scaling"""
         if fileName:            
             im = Image.fromarray(img)
             im.save(fileName)         
             
     
-    def pil2np(self,im):
+    def pil2np(self, im):
         """ Utility to convert PIL image 'im' to numpy array"""
         return np.asarray(im)        
     
     
     def load_background(self):
         """ Loads the default background file"""
-        backIm = Image.open('background.tif')
+        backIm = Image.open(self.defaultBackgroundFile)
         if backIm is not None:
              self.backgroundImage = self.pil2np(backIm)
+             self.backgroundSource = self.defaultBackgroundFile
              
 
     def load_background_from(self):
@@ -861,6 +1221,9 @@ class CAS_GUI(QMainWindow):
                 return
             if backIm is not None:
                 self.backgroundImage = self.pil2np(backIm)
+                self.backgroundSource = filename
+
+                self.processing_options_changed()
         
 
     def save_background(self):
@@ -892,6 +1255,8 @@ class CAS_GUI(QMainWindow):
         """ Takes current image as background"""
         if self.currentImage is not None:
             self.backgroundImage = self.currentImage
+            self.backgroundSource = f"Captured at {datetime.now()}."
+            self.processing_options_changed()
         else:
             QMessageBox.about(self, "Error", "There is no current image to use as the background.")  
 
@@ -914,35 +1279,30 @@ class CAS_GUI(QMainWindow):
         self.recording = False
         
     
-    def handle_cam_source_change(self):
+    def cam_source_changed(self):
         """ Deals with user changing camera source option, including adjusting
         visibility of relevant widgets
         """
+        self.end_acquire()
         if self.camSourceCombo.currentText() == 'File':
             self.end_acquire()
-            
-            # Hide camera controls, show file widgets
+
+            # Hide camera controls, show file widgets          
+            self.inputFilePanel.show()
             self.camSettingsPanel.hide()
-            self.camControlGroupBox.hide()
-            self.startBtn.hide()
-            self.endBtn.hide()    
+            self.liveButton.hide()
             self.camStatusPanel.hide()
             self.inputFilePanel.show()
-            self.fileIdxWidget.show()
 
         else:
+           
             # Show camera controls, hide file widgets
             self.camSettingsPanel.show()
-            self.camControlGroupBox.show()
-            if self.camOpen:
-                self.startBtn.hide()
-                self.endBtn.show()
-            else:    
-                self.startBtn.show()
-                self.endBtn.hide()
+            self.liveButton.show()
             self.camStatusPanel.show()
             self.inputFilePanel.hide()
             self.fileIdxWidget.hide()
+
 
 
     

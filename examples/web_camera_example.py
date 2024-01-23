@@ -20,7 +20,9 @@ filename = Path('data/vid_example.tif')
 cam = WebCamera()
 
 # Open the camera. The argument is the camera number.
+print("Opening Camera (may take a few seconds)...")
 cam.open_camera(0)
+print("Camera Open")
 
 
 # Grab the next image
@@ -34,27 +36,28 @@ else:
     print ("No image was received.")
 
 
-# # Set the frame rate to 50 fps
-# frame_rate = 100
-# cam.set_frame_rate(frame_rate)
+# Set the frame rate to 10 fps
+frame_rate = 10
+cam.set_frame_rate(frame_rate)
 
-# # Wait until we have a frame to avoid messing up frame rate measurement below
-# while cam.get_image() is None:
-#     pass
+# Wait until we have a frame to avoid messing up frame rate measurement below
+print("Waiting for first frame...")
+while cam.get_image() is None:
+     pass
 
-# # Now we will grab some images in succession and check that they are served
-# # at the requested frame rate
-# nFrames = 50
+# Now we will grab some images in succession and check that they are served
+# at the requested frame rate
+nFrames = 10
+print(f"Grabing {nFrames} frames ...")
+start_time = time.perf_counter()
+for iImage in range(0,nFrames):
+    while cam.get_image() is None:
+        pass
+end_time =  time.perf_counter()
 
-# start_time = time.perf_counter()
-# for iImage in range(0,nFrames):
-#     while cam.get_image() is None:
-#         pass
-# end_time =  time.perf_counter()
-
-# measured_frame_rate = round(nFrames / (end_time-start_time))
-# print(f"Requested frame rate is {frame_rate} fps. \nMeasured frame rate is {measured_frame_rate} fps.")   
+measured_frame_rate = round(nFrames / (end_time-start_time))
+print(f"Requested frame rate is {frame_rate} fps. \nMeasured frame rate is {measured_frame_rate} fps.")   
 
 
-# Close the camera (not strictly necessary for simulated cameras, for compatibility with real cameras.)
-#cam.close_camera()
+# Close the camera 
+cam.close_camera()

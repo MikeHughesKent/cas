@@ -47,40 +47,22 @@ class example_multi_GUI(CAS_GUI):
     # Default source for simulated camera
     sourceFilename = Path('data/vid_example.tif')
     
-        
-        
-    def create_layout(self):
-        """ 
-        We override the default create_layout to add an additional
-        panel of options to control our image processing. 
-        
-        Note that an objectName is specified for each widget. This will cause the
-        value of that widget to be saved at close and reloaded at next oepn.
+   
+    
+    def add_settings(self, settingsLayout):
+        """ We override this function to add custom options to the setings menu
+        panel.
         """
-
-        # We first call the create_layout from the parent class because we still
-        # want all the things this creates. Otherwise we would have to create them
-        # again here
-        super().create_layout()
-        
-        
-        # Now we create a panel with our processing options
-        self.processingPanelContainer, self.processingWidget, self.processingLayout \
-                            = self.create_control_panel_container("Processing Options")
         
         # Number to Average 
-        self.processingLayout.addWidget(QLabel("Number to Average"))
+        self.settingsLayout.addWidget(QLabel("Number to Average"))
         self.numAverageInput = QSpinBox(objectName = 'NumAverageInput')
-        self.processingLayout.addWidget(self.numAverageInput)  
+        self.settingsLayout.addWidget(self.numAverageInput)  
         self.numAverageInput.setMinimum(1)
         self.numAverageInput.setMaximum(5)
-        self.numAverageInput.valueChanged[int].connect(self.handle_processing_changed)
+        self.numAverageInput.valueChanged[int].connect(self.processing_options_changed)
         
     
-        # Add this panel to our GUI
-        self.layout.addWidget(self.processingPanelContainer)                
- 
-     
     def create_processors(self):
           """ 
           We have overrided this function to create the thread for processing the images
@@ -98,14 +80,14 @@ class example_multi_GUI(CAS_GUI):
           self.imageProcessor = AverageProcessor(10,10, inputQueue = inputQueue)
           
           # Update the processor based on initial values of widgets
-          self.handle_processing_changed(0)
+          self.processing_options_changed(0)
       
           # Start the thread
           if self.imageProcessor is not None:
               self.imageProcessor.start()
 
 
-    def handle_processing_changed(self,event):
+    def processing_options_changed(self,event):
         """
         This function is called when the processing options are changed so
         that we can update the processor. Here we are just changing attributes

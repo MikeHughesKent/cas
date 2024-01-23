@@ -14,11 +14,16 @@ from GenericCamera import GenericCameraInterface
         
 class WebCamera(GenericCameraInterface):
 
-    exposure = 0              
-
+    
+   
     
     def __init__(self):
-        pass
+        
+        self.lastImageTime = time.perf_counter()
+        self.lastImageTimeAdjusted = self.lastImageTime
+        self.fps = 20
+        self.frameRateEnabled = True
+        self.exposure = -10
         
         
         
@@ -36,14 +41,52 @@ class WebCamera(GenericCameraInterface):
     def dispose(self):
         pass               
         
+   
+
     def get_image(self):
-        
+       # Either loads the next image from the file or, if we have pre-loaded,
+       # copies the image from memory. Returns the image.
+       
+       
+       # Calculate delay needed to simulate desired frame rate
+       if self.fps > 0:
+           desiredWait = 1/self.fps
+       else:
+           desiredWait = 100000
+       currentTime = time.perf_counter()
+       waitNeeded = desiredWait - (currentTime - self.lastImageTimeAdjusted)
+       
+       
+       # Only return an image if enough time has passed since the last image
+       # to match the frame rate, otherwise return None
+       if waitNeeded < 0:
+           self.lastImageTime = time.perf_counter()
+           
+           # We keep a record of the last time minus the wait needed. This way,
+           # when we have waited too long (i.e. waitNeeded << 0) we add something
+           # to the lastImageTimeAdjusted which has the effect of making the next
+           # wait needed shorter. This lead to a more accurate frame rate.
+           self.lastImageTimeAdjusted = self.lastImageTime - waitNeeded
+
+           imageData = self.grab_image()
+
+           self.actualFrameRate = 1/(time.perf_counter() - self.lastImageTime)     
+       
+       else:
+           
+           imageData = None
+      
+       return imageData
+   
+
+    def grab_image(self):
+        """ Pull image from camera
+        """        
         rval, imageData = self.vc.read()
         imageData = np.mean(imageData, 2).astype('uint8')
         
         return imageData
-
-
+        
    
     def set_frame_rate_on(self):
         return True
@@ -67,6 +110,13 @@ class WebCamera(GenericCameraInterface):
         
     def get_gain(self):
         return self.vc.get(cv.CAP_PROP_GAIN)
+    
+    def set_frame_rate(self, fps):
+        self.fps = fps
+        
+    
+    def get_frame_rate(self):
+        return self.fps
         
     
     def get_gain_range(self):

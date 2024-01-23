@@ -14,15 +14,9 @@ from WebCamera import WebCamera
         
 class WebCameraColour(WebCamera):
 
-    exposure = 0              
-
-    
-    def __init__(self):
-        pass
-        
-        
           
-    def get_image(self):
+    def grab_image(self):
+        print("grab")
         
         rval, imageData = self.vc.read()
         imageData = cv.cvtColor(imageData, cv.COLOR_BGR2RGB)

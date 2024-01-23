@@ -7,51 +7,48 @@ images through fibre bundles.
 CAS_GUI is a graphical user interface built around the 
 Kent Camera Acquisition System (CAS).
 
-It is intended as a base class to be extended by more complete programs that
-provide further functionality.
+While it can be used stand-aline, it is intended as a base class to be
+extended by more complete programs that provide further functionality.
 
-@author: Mike Hughes
-Applied Optics Group
-University of Kent
-
+@author: Mike Hughes, Applied Optics Group, University of Kent
 """
 
 import sys 
-sys.path.append('C:\\Users\\AOG\\Dropbox\\Programming\\Python\\pyfibrebundle\\src')
+
+# If PyFibreBundle is not on your path, add the path here:
+sys.path.append(r'..\\..\\pyfibrebundle\\src')
 
 import os
-sys.path.append(os.path.abspath("widgets"))
-sys.path.append(os.path.abspath("cameras"))
-sys.path.append(os.path.abspath("threads"))
-
 import time
-import numpy as np
 import math
+import pickle
+
+import numpy as np
+import matplotlib.pyplot as plt
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QPalette, QColor, QImage, QPixmap, QPainter, QPen, QGuiApplication
+from PyQt5.QtGui import QIcon, QPalette, QColor, QImage, QPixmap, QPainter, QPen, QGuiApplication
 from PyQt5.QtGui import QPainter, QBrush, QPen
 
 from PIL import Image
 
 import cv2 as cv
 
+sys.path.append(os.path.abspath("widgets"))
+sys.path.append(os.path.abspath("cameras"))
+sys.path.append(os.path.abspath("threads"))
+
 from CAS_GUI_Base import CAS_GUI
 
 from ImageAcquisitionThread import ImageAcquisitionThread
 from image_display import ImageDisplay
-
-import matplotlib.pyplot as plt
-from cam_control_panel import *
-
 from BundleProcessorHandler import BundleProcessorHandler
 from BundleProcessor import BundleProcessor
 
 import pybundle
-import pickle
 
 
 class CAS_GUI_Bundle(CAS_GUI):
@@ -66,35 +63,47 @@ class CAS_GUI_Bundle(CAS_GUI):
     def __init__(self,parent=None):                      
         
         super(CAS_GUI_Bundle, self).__init__(parent)
+        self.mosaic_options_changed()
 
         
     # Overloaded, call by superclass    
     def create_layout(self):
         
         super().create_layout()
+
+        
+        self.calibPanel = self.create_calib_panel()
+        
+        self.saveRawMenuButton = self.create_menu_button("Save Raw As", QIcon(os.path.join(self.resPath, 'icons', 'save_white.svg')), self.save_raw_as_button_clicked, position = 3)
+
+        self.calibMenuButton = self.create_menu_button("Calibration", QIcon(os.path.join(self.resPath, 'icons', 'grid_white.svg')), self.calib_menu_button_clicked, True, True, 5)
+
         
         # Create the mosaic display widget 
         if self.mosaicingEnabled:
+            self.mosaicButton = self.create_menu_button(text = "Mosaicing", 
+                                                         icon = QIcon('../res/icons/copy_white.svg'), 
+                                                         handler = self.mosaic_button_clicked, 
+                                                         hold = True, 
+                                                         menuButton = True,
+                                                         position = 7)
+            
+            
             self.mosaicDisplayFrame = QFrame()
             self.mosaicDisplayLayout = QVBoxLayout()
             self.mosaicDisplayLayout.setSpacing(0)
             self.mosaicDisplayLayout.setContentsMargins(0, 0, 0, 0)
             self.mosaicDisplayFrame.setLayout(self.mosaicDisplayLayout)
-            self.mosaicControlPanel = self.init_mosaic_panel(self.controlPanelSize)
-            self.mosaicDisplay = ImageDisplay(name = "mosaicDisplay")
-            self.mosaicDisplay.isStatusBar = False
-            self.mosaicDisplay.autoScale = True
-            self.mosaicDisplayLayout.addWidget(self.mosaicDisplay)
-            self.layout.insertWidget(1,self.mosaicDisplayFrame)            
-     
-        # Create the bundle processing panel
-        self.bundleProcessPanel = self.init_bundle_process_panel(self.controlPanelSize)
-        self.layout.addWidget(self.bundleProcessPanel)
+            
+            self.mosaicPanel = self.create_mosaic_panel()
+            
+            self.mosaicDisplay, self.mosaicDisplayFrame =  self.create_image_display(name = "mosaicDisplay", statusBar = True, autoScale = True)       
+            self.contentLayout.addWidget(self.mosaicDisplay)
 
-        if self.mosaicingEnabled:
-            self.layout.addWidget(self.mosaicControlPanel)
 
         
+    def mosaic_button_clicked(self):
+        self.expanding_menu_clicked(self.mosaicButton, self.mosaicPanel)
         
         
     def start_acquire(self):
@@ -113,25 +122,19 @@ class CAS_GUI_Bundle(CAS_GUI):
             self.imageProcessor.start()
         
         if self.mosaicingEnabled:
-            self.handle_change_mosaic_options()
-        self.handle_changed_bundle_processing()
+            self.mosaic_options_changed()
+        self.processing_options_changed()
       
         
     
-    def init_bundle_process_panel(self, panelSize):
-        """ Create the control panel for fibre bundle processibg"""
-               
-        self.bundleLoadBackgroundBtn=QPushButton('Load Background')
-        self.bundleLoadBackgroundFromBtn = QPushButton('Load Background From')
-        self.bundleAcquireBackgroundBtn=QPushButton('Acquire Background')
-        self.bundleSaveBackgroundBtn=QPushButton('Save Background')
-        self.bundleSaveBackgroundAsBtn=QPushButton('Save Background As')
-
+    def create_settings_panel(self):
+        """ Create the control panel for fibre bundle processing"""
+        
+        bundlePanel, layout = self.panel_helper(title = "Processing Settings")
+       
         self.bundleCoreMethodCombo = QComboBox(objectName = 'bundleCoreMethodCombo')
         self.bundleCoreMethodCombo.addItems(['Filtering', 'Interpolation'])
-        self.bundleCalibBtn=QPushButton('Calibrate')
-        self.bundleLoadCalibBtn=QPushButton('Load Calibration')
-        self.bundleSaveCalibBtn=QPushButton('Save Calibration')
+      
         self.bundleShowRaw = QCheckBox('Show Raw', objectName = 'bundleShowRawCheck')
         
         self.bundleFilterSizeInput = QDoubleSpinBox(objectName = 'bundleFilterSizeInput')
@@ -164,120 +167,143 @@ class CAS_GUI_Bundle(CAS_GUI):
         self.bundleSubtractBackCheck = QCheckBox("Subtract Background", objectName = 'bundleSubtractBackCheck')
         self.bundleNormaliseCheck = QCheckBox("Normalise", objectName = 'bundleNormaliseCheck')
         
-        bundlePanel = QWidget()
-        bundlePanel.setLayout(topLayout:=QVBoxLayout())
-        bundlePanel.setMaximumWidth(panelSize)
-        bundlePanel.setMinimumWidth(panelSize)
-        
-        groupBox = QGroupBox("Bundle Pre-processing")
-        topLayout.addWidget(groupBox)
-        groupBox.setLayout(layout:=QVBoxLayout())
-
-        layout.addWidget(self.bundleAcquireBackgroundBtn)
-        layout.addWidget(self.bundleLoadBackgroundBtn)
-        layout.addWidget(self.bundleLoadBackgroundFromBtn)
-
-        layout.addWidget(self.bundleSaveBackgroundBtn)
-        layout.addWidget(self.bundleSaveBackgroundAsBtn)
-        
-        hr1 = QFrame ()
-        hr1.setFrameShape(QFrame.HLine)
-        hr1.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(hr1)
-        
-        layout.addWidget(self.bundleFindBtn)  
-
-        bcx = QHBoxLayout()
-        bcx.addWidget(QLabel("Bundle X:"))
-        bcx.addWidget(self.bundleCentreXInput)
-        layout.addLayout(bcx)
-
-        bcy = QHBoxLayout()
-        bcy.addWidget(QLabel("Bundle Y:"))
-        bcy.addWidget(self.bundleCentreYInput)
-        layout.addLayout(bcy)
-
-        bcr = QHBoxLayout()
-        bcr.addWidget(QLabel("Bundle Rad:"))
-        bcr.addWidget(self.bundleRadiusInput)
-        layout.addLayout(bcr)
-        
-        hr2 = QFrame ()
-        hr2.setFrameShape(QFrame.HLine)
-        hr2.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(hr2)
-        
+        self.bundleInterpFilterInput = QDoubleSpinBox(objectName = "bundleInterpFilter")
+       
         layout.addWidget(self.bundleShowRaw)
         layout.addWidget(QLabel("Pre-processing Method:"))
         layout.addWidget(self.bundleCoreMethodCombo)
+
         
         # Panel with options for interpolation
         self.interpProcessPanel = QWidget()
         self.interpProcessPanel.setLayout(interpLayout:=QVBoxLayout())
-        interpLayout.addWidget(self.bundleCalibBtn)
-        interpLayout.addWidget(self.bundleLoadCalibBtn)
-        interpLayout.addWidget(self.bundleSaveCalibBtn)
+        
+        interpLayout.addWidget(QLabel("Image Pixels:"))
+        interpLayout.addWidget(self.bundleGridSizeInput)
+        interpLayout.addWidget(QLabel('Pre-Filter size:'))
+        interpLayout.addWidget(self.bundleInterpFilterInput)
         interpLayout.setContentsMargins(0,0,0,0)       
+        
         layout.addWidget(self.interpProcessPanel)
-        ####
-       
+      
         # Panel with options for filtering
         self.filterProcessPanel = QWidget()
         self.filterProcessPanel.setLayout(fppLayout:=QVBoxLayout())
+        fppLayout.addWidget(self.bundleFindBtn)  
+
+        bcx = QHBoxLayout()
+        bcx.addWidget(QLabel("Bundle X:"))
+        bcx.addWidget(self.bundleCentreXInput)
+        fppLayout.addLayout(bcx)
+
+        bcy = QHBoxLayout()
+        bcy.addWidget(QLabel("Bundle Y:"))
+        bcy.addWidget(self.bundleCentreYInput)
+        fppLayout.addLayout(bcy)
+
+        bcr = QHBoxLayout()
+        bcr.addWidget(QLabel("Bundle Rad:"))
+        bcr.addWidget(self.bundleRadiusInput)
+        fppLayout.addLayout(bcr)
+        
         fppLayout.addWidget(QLabel('Filter size:'))
         fppLayout.addWidget(self.bundleFilterSizeInput)
         fppLayout.setContentsMargins(0,0,0,0)
         fppLayout.addWidget(self.bundleCropCheck)
         fppLayout.addWidget(self.bundleMaskCheck)
-        layout.addWidget(self.filterProcessPanel)
-        ####
         
+        layout.addWidget(self.filterProcessPanel)
+        
+        
+        # These options are common to both processing methods
         layout.addWidget(self.bundleSubtractBackCheck)
         layout.addWidget(self.bundleNormaliseCheck)
         
-        bcs = QHBoxLayout()
-        bcs.addWidget(QLabel("Image Pixels:"))
-        bcs.addWidget(self.bundleGridSizeInput)
-        layout.addLayout(bcs)
-        
-        topLayout.addStretch()
+        layout.addStretch()
     
-        self.bundleCoreMethodCombo.currentIndexChanged[int].connect(self.handle_changed_bundle_processing)
-        self.bundleFilterSizeInput.valueChanged[float].connect(self.handle_changed_bundle_processing)
-        self.bundleCentreXInput.valueChanged[int].connect(self.handle_changed_bundle_processing)
-        self.bundleCentreYInput.valueChanged[int].connect(self.handle_changed_bundle_processing)
-        self.bundleRadiusInput.valueChanged[int].connect(self.handle_changed_bundle_processing)
-        self.bundleFindBtn.clicked.connect(self.handle_bundle_find)
-        self.bundleShowRaw.stateChanged.connect(self.handle_changed_bundle_processing)
-        self.bundleCropCheck.stateChanged.connect(self.handle_changed_bundle_processing)
-        self.bundleMaskCheck.stateChanged.connect(self.handle_changed_bundle_processing)
-        self.bundleSubtractBackCheck.stateChanged.connect(self.handle_changed_bundle_processing)
-        self.bundleNormaliseCheck.stateChanged.connect(self.handle_changed_bundle_processing)
-        self.bundleAcquireBackgroundBtn.clicked.connect(self.acquire_background_click)
-        self.bundleLoadBackgroundBtn.clicked.connect(self.load_background_click)
-        self.bundleLoadBackgroundFromBtn.clicked.connect(self.load_background_from_click)
-        self.bundleSaveBackgroundBtn.clicked.connect(self.save_background_click)
-        self.bundleSaveBackgroundAsBtn.clicked.connect(self.save_background_as_click)
-
-        self.bundleLoadCalibBtn.clicked.connect(self.handle_load_calibration)
-        self.bundleSaveCalibBtn.clicked.connect(self.handle_save_calibration)
-        self.bundleGridSizeInput.valueChanged[int].connect(self.handle_changed_bundle_processing)
-        self.bundleCalibBtn.clicked.connect(self.handle_calibrate)        
+        self.bundleCoreMethodCombo.currentIndexChanged[int].connect(self.processing_options_changed)
+        self.bundleInterpFilterInput.valueChanged[float].connect(self.processing_options_changed)
+        self.bundleFilterSizeInput.valueChanged[float].connect(self.processing_options_changed)
+        self.bundleCentreXInput.valueChanged[int].connect(self.processing_options_changed)
+        self.bundleCentreYInput.valueChanged[int].connect(self.processing_options_changed)
+        self.bundleRadiusInput.valueChanged[int].connect(self.processing_options_changed)
+        self.bundleFindBtn.clicked.connect(self.bundle_find_clicked)
+        self.bundleShowRaw.stateChanged.connect(self.processing_options_changed)
+        self.bundleCropCheck.stateChanged.connect(self.processing_options_changed)
+        self.bundleMaskCheck.stateChanged.connect(self.processing_options_changed)
+        self.bundleSubtractBackCheck.stateChanged.connect(self.processing_options_changed)
+        self.bundleNormaliseCheck.stateChanged.connect(self.processing_options_changed)
+        self.bundleGridSizeInput.valueChanged[int].connect(self.processing_options_changed)
+        
         
         return bundlePanel
+    
+    
+    def create_calib_panel(self):
+        """ Create the control panel for fibre bundle processing"""
+        
+        widget, layout = self.panel_helper(title = "Calibration")
+        
+        
+        backHeader = QLabel("Background")
+        backHeader.setProperty("subheader", "true")
+        layout.addWidget(backHeader)
+        
+        self.backgroundStatusLabel = QLabel("")
+        self.backgroundStatusLabel.setWordWrap(True)
+        self.backgroundStatusLabel.setProperty("status", "true")
+        self.backgroundStatusLabel.setTextFormat(Qt.RichText)
+        layout.addWidget(self.backgroundStatusLabel)
+        
+        self.bundleLoadBackgroundBtn=QPushButton('Load Background')
+        self.bundleLoadBackgroundFromBtn = QPushButton('Load Background From')
+        self.bundleAcquireBackgroundBtn=QPushButton('Acquire Background')
+        self.bundleSaveBackgroundBtn=QPushButton('Save Background')
+        self.bundleSaveBackgroundAsBtn=QPushButton('Save Background As')
+                
+        layout.addWidget(self.bundleAcquireBackgroundBtn)
+        layout.addWidget(self.bundleLoadBackgroundBtn)
+        layout.addWidget(self.bundleLoadBackgroundFromBtn)
+        layout.addWidget(self.bundleSaveBackgroundBtn)
+        layout.addWidget(self.bundleSaveBackgroundAsBtn)
+      
+        bundleHeader = QLabel("Bundle Calibration")
+        bundleHeader.setProperty("subheader", "true")
+        layout.addWidget(bundleHeader)
+        
+        self.calibStatusLabel = QLabel("")
+        self.calibStatusLabel.setWordWrap(True)
+        self.calibStatusLabel.setProperty("status", "true")
+        self.calibStatusLabel.setTextFormat(Qt.RichText)
+        layout.addWidget(self.calibStatusLabel)
+        
+        self.bundleCalibBtn=QPushButton('Calibrate Bundle')
+        layout.addWidget(self.bundleCalibBtn)
+        
+        self.bundleLoadCalibBtn=QPushButton('Load Calibration')
+        self.bundleSaveCalibBtn=QPushButton('Save Calibration')
+        layout.addWidget(self.bundleLoadCalibBtn)
+        layout.addWidget(self.bundleSaveCalibBtn)
+        
+        layout.addStretch()
+       
+        self.bundleAcquireBackgroundBtn.clicked.connect(self.acquire_background_clicked)
+        self.bundleLoadBackgroundBtn.clicked.connect(self.load_background_clicked)
+        self.bundleLoadBackgroundFromBtn.clicked.connect(self.load_background_from_clicked)
+        self.bundleSaveBackgroundBtn.clicked.connect(self.save_background_clicked)
+        self.bundleSaveBackgroundAsBtn.clicked.connect(self.save_background_as_clicked)
+        self.bundleLoadCalibBtn.clicked.connect(self.load_calibration_clicked)
+        self.bundleSaveCalibBtn.clicked.connect(self.save_calibration_clicked)
+        self.bundleCalibBtn.clicked.connect(self.calibrate_clicked)      
+        
+        return widget
 
 
-    def init_mosaic_panel(self, panelSize):
+    def create_mosaic_panel(self):
         """ Creates the panel with mosaicing options"""
         
-        mosaicPanel = QWidget()
-        mosaicPanel.setLayout(topLayout:=QVBoxLayout())
-        mosaicPanel.setMaximumWidth(panelSize)
-        mosaicPanel.setMinimumWidth(panelSize)
-        groupBox = QGroupBox("Mosaicing")
-        topLayout.addWidget(groupBox)
-        groupBox.setLayout(layout:=QVBoxLayout())
-        
+        widget, layout = self.panel_helper(title = "Mosaic Settings")
+
         self.resetMosaicBtn=QPushButton('Reset mosaic')
         self.saveMosaicBtn=QPushButton('Save mosaic')
         self.mosaicThresholdInput = QDoubleSpinBox(objectName = 'mosaicThresholdInput')
@@ -305,16 +331,21 @@ class CAS_GUI_Bundle(CAS_GUI):
         layout.addWidget(QLabel("Sharpness threshold:"))
         layout.addWidget(self.mosaicCOVInput)
         
-        topLayout.addStretch()
+        layout.addStretch()
 
-        self.resetMosaicBtn.clicked.connect(self.handle_reset_mosaic)
-        self.mosaicThresholdInput.valueChanged[float].connect(self.handle_change_mosaic_options)
-        self.mosaicIntensityInput.valueChanged[float].connect(self.handle_change_mosaic_options)
-        self.mosaicCOVInput.valueChanged[float].connect(self.handle_change_mosaic_options)
-        self.mosaicOnCheck.stateChanged.connect(self.handle_change_mosaic_options)
+        self.resetMosaicBtn.clicked.connect(self.reset_mosaic_clicked)
+        self.mosaicThresholdInput.valueChanged[float].connect(self.mosaic_options_changed)
+        self.mosaicIntensityInput.valueChanged[float].connect(self.mosaic_options_changed)
+        self.mosaicCOVInput.valueChanged[float].connect(self.mosaic_options_changed)
+        self.mosaicOnCheck.stateChanged.connect(self.mosaic_options_changed)
 
-        return mosaicPanel
+        return widget
     
+    def calib_menu_button_clicked(self):
+     """ Handles press of 'Calibration' button.
+     """
+     self.expanding_menu_clicked(self.calibMenuButton, self.calibPanel)
+
 
     def update_image_display(self):
         """ Overrides from base class to include mosaicing window"""
@@ -323,22 +354,47 @@ class CAS_GUI_Bundle(CAS_GUI):
         elif self.currentImage is not None:
            self.mainDisplay.set_image(self.currentImage)
        
-        if self.mosaicingEnabled:
+        if self.mosaicingEnabled and self.imageProcessor.get_mosaic() is not None:
                self.mosaicDisplay.set_image(self.imageProcessor.get_mosaic())       
         
     
-    def handle_changed_bundle_processing(self):
+    def processing_options_changed(self):
         """ Called when any of the widget values/states are changed"""
         
         # Show correct bundle processing options depending on method
-        if self.bundleCoreMethodCombo.currentIndex() == 0:
+        FILTER = 0
+        INTERPOLATE = 1
+        if self.bundleCoreMethodCombo.currentIndex() == FILTER:
             self.filterProcessPanel.show()
             self.interpProcessPanel.hide()
-        elif self.bundleCoreMethodCombo.currentIndex() == 1:
+
+        elif self.bundleCoreMethodCombo.currentIndex() == INTERPOLATE:
             self.filterProcessPanel.hide()
             self.interpProcessPanel.show()
+            
+        if self.backgroundImage is not None:    
+            self.backgroundStatusLabel.setText(self.backgroundSource)
+        else:
+            self.backgroundStatusLabel.setText("None")
+
+            
+
         
         if self.imageProcessor is not None:
+            if self.bundleCoreMethodCombo.currentIndex() == FILTER:
+                self.calibStatusLabel.setText("")
+            elif self.bundleCoreMethodCombo.currentIndex() == INTERPOLATE:
+                if self.imageProcessor.pyb.calibration is None:
+                    self.calibStatusLabel.setText("None")
+                else:
+                    self.calibStatusLabel.setText(f"<b>Calibration:</b> <br> Found {self.imageProcessor.pyb.calibration.nCores[0]} cores.")
+        else:
+            self.calibStatusLabel.setText(f"None")
+
+            
+                   
+        if self.imageProcessor is not None:
+    
             self.imageProcessor.pyb.gridSize = self.bundleGridSizeInput.value()
             if self.bundleCoreMethodCombo.currentIndex() == 0:
                 self.imageProcessor.pyb.set_core_method(self.imageProcessor.pyb.FILTER)
@@ -373,8 +429,12 @@ class CAS_GUI_Bundle(CAS_GUI):
                 self.imageProcessor.pyb.set_normalise_image(None)
 
     
-            self.imageProcessor.pyb.set_filter_size(self.bundleFilterSizeInput.value())    
             self.imageProcessor.pyb.outputType = 'float'
+            
+            if self.bundleCoreMethodCombo.currentIndex() == FILTER:
+                self.imageProcessor.pyb.set_filter_size(self.bundleFilterSizeInput.value())   
+            elif self.bundleCoreMethodCombo.currentIndex() == INTERPOLATE:
+                self.imageProcessor.pyb.set_filter_size(self.bundleInterpFilterInput.value())  
             self.imageProcessor.update_settings()    
                                     
             # If we are processing a single file, we should make sure this
@@ -384,7 +444,7 @@ class CAS_GUI_Bundle(CAS_GUI):
             self.update_file_processing()
             
             
-    def handle_bundle_find(self):
+    def bundle_find_clicked(self):
         
         if self.currentImage is not None:
             loc = pybundle.find_bundle(pybundle.to8bit(self.currentImage))
@@ -396,78 +456,75 @@ class CAS_GUI_Bundle(CAS_GUI):
             QMessageBox.about(self, "Error", "There is no image to analyse.")
              
                              
-    def handle_calibrate(self):
-        
-        
+    def calibrate_clicked(self):
         
         if self.backgroundImage is not None and self.imageProcessor is not None:
             
             QApplication.setOverrideCursor(Qt.WaitCursor)
             self.imageProcessor.pyb.set_calib_image(self.backgroundImage)
-            #self.imageProcessor.pyb.set_background(self.backgroundImage)
-            #self.imageProcessor.pyb.set_normalise_image(self.backgroundImage)
-
+            self.imageProcessor.pyb.set_background(self.backgroundImage)
+            self.imageProcessor.pyb.set_normalise_image(self.backgroundImage)
             self.imageProcessor.pyb.calibrate()
-            print(f"Found {np.shape(self.imageProcessor.pyb.calibration.coreX)} cores.")
             QApplication.restoreOverrideCursor()
 
         else:
             QMessageBox.about(self, "Error", "Image and background image required")  
         
-        self.handle_changed_bundle_processing()
+        self.processing_options_changed()
         
             
-    def handle_save_calibration(self):
+    def save_calibration_clicked(self):
         with open('calib.dat','wb') as pickleFile:
             pickle.dump(self.imageProcessor.pyb.calibration, pickleFile)
 
         
-    def handle_load_calibration(self):
+    def load_calibration_clicked(self):
         with open('calib.dat', 'rb') as pickleFile:
             self.imageProcessor.pyb.calibration = pickle.load(pickleFile)
-        self.handle_changed_bundle_processing()
+        self.processing_options_changed()
         
-    def handle_reset_mosaic(self):
+    def reset_mosaic_clicked(self):
         self.imageProcessor.mosaic.reset()
         
 
-    def handle_change_mosaic_options(self):
-        if self.mosaicOnCheck.isChecked():
-
-            #self.mosaicDisplayWidget.show()
-            if self.imageProcessor is not None:
-                self.imageProcessor.mosaicing = True
-
-                if self.mosaicThresholdInput.value() > 0:
-                    self.imageProcessor.mosaic.resetThresh = self.mosaicThresholdInput.value()
-                else:
-                    self.imageProcessor.mosaic.resetThresh = None
-                 
-                    
-                if self.mosaicIntensityInput.value() > 0: 
-                    self.imageProcessor.mosaic.resetIntensity = self.mosaicIntensityInput.value()
-                else:
-                    self.imageProcessor.mosaic.resetIntensity = None
-                
-                if self.mosaicCOVInput.value() > 0:
-                    self.imageProcessor.mosaic.resetSharpness = self.mosaicCOVInput.value()
-                else:
-                    self.imageProcessor.mosaic.resetSharpness= None
-                    
-        else:
-            if self.imageProcessor is not None:
-                self.imageProcessor.mosaicing = False
+    def mosaic_options_changed(self):
         
+        if self.mosaicingEnabled:
+            if self.mosaicOnCheck.isChecked():
+                self.mosaicDisplay.show()
+                #self.mosaicDisplayWidget.show()
+                if self.imageProcessor is not None:
+                    self.imageProcessor.mosaicing = True
     
-    def handle_change_show_bundle_control(self, event):
-        if self.showBundleControlCheck.isChecked():
-            self.bundleProcessPanel.show()
-            if self.mosaicingEnabled:
-                self.mosaicControlPanel.show()
-        else:  
-            self.bundleProcessPanel.hide()
-            if self.mosaicingEnabled:
-                self.mosaicControlPanel.hide()
+                    if self.mosaicThresholdInput.value() > 0:
+                        self.imageProcessor.mosaic.resetThresh = self.mosaicThresholdInput.value()
+                    else:
+                        self.imageProcessor.mosaic.resetThresh = None
+                     
+                        
+                    if self.mosaicIntensityInput.value() > 0: 
+                        self.imageProcessor.mosaic.resetIntensity = self.mosaicIntensityInput.value()
+                    else:
+                        self.imageProcessor.mosaic.resetIntensity = None
+                    
+                    if self.mosaicCOVInput.value() > 0:
+                        self.imageProcessor.mosaic.resetSharpness = self.mosaicCOVInput.value()
+                    else:
+                        self.imageProcessor.mosaic.resetSharpness= None
+                        
+            else:
+                self.mosaicDisplay.hide()
+    
+                if self.imageProcessor is not None:
+                    self.imageProcessor.mosaicing = False
+        wid = self.width()
+        hei = self.height()
+        self.resize(400,400)
+        self.resize(2000,2000)
+        self.resize(wid, hei)
+        
+
+
 
 
     
