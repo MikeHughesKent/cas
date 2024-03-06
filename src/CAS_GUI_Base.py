@@ -35,7 +35,7 @@ from PyQt5.QtGui import QIcon, QPalette, QColor, QImage, QPixmap, QPainter, QPen
 from PyQt5.QtGui import QPainter, QBrush, QPen
 from PyQt5.QtXml import QDomDocument, QDomElement
 
-from PIL import Image
+from PIL import Image, TiffImagePlugin
 
 import cv2 as cv
 
@@ -50,9 +50,8 @@ from image_display import ImageDisplay
 from ImageAcquisitionHandler import ImageAcquisitionHandler
 from FileInterface import FileInterface
 
-
 cuda = True                 # Set to False to disable use of GPU
-
+multicore = False           # Set to True to run processor on a different core
 
 class CAS_GUI(QMainWindow):
 
@@ -106,8 +105,10 @@ class CAS_GUI(QMainWindow):
     menuButtonsList = []
     defaultBackgroundFile = "background.tif"
     backgroundSource = ""
+    recordBuffer = []
   
-    
+    TIF = 0
+    AVI = 1
     
     def __init__(self, parent=None):   
         """ Initial setup of GUI.
@@ -116,7 +117,8 @@ class CAS_GUI(QMainWindow):
         super(CAS_GUI, self).__init__(parent)
         
         self.defaultIcon = os.path.join(self.resPath, self.iconFilename)
-
+        self.recordFolder = Path.cwd().as_posix()
+        
         
         # Create the GUI. This is generally over-ridden in sub-classes
         self.create_layout()        
@@ -130,29 +132,33 @@ class CAS_GUI(QMainWindow):
         self.create_timers()         
         self.acquisitionLock = Lock()
 
+        # In case software is being used for first time, we can implement some
+        # useful defaults (for example in a sub-class)
+        self.apply_default_settings()      
     
         # Load last values for GUI from registry
         self.settings = QtCore.QSettings(self.authorName, self.appName)  
         self.gui_restore()
         
-        # In case software is being used for first time, we can implement some
-        # useful defaults (for example in a sub-class)
-        self.apply_default_settings()
         
+       
 
+    
         # Put the window in a sensible position
         self.resize(1200,800)
         frameGm = self.frameGeometry()
         screen = QtWidgets.QApplication.desktop().screenNumber(QtWidgets.QApplication.desktop().cursor().pos())
         centerPoint = QtWidgets.QApplication.desktop().screenGeometry(screen).center()
         frameGm.moveCenter(centerPoint)
-        self.move(frameGm.topLeft())
+        self.move(frameGm.topLeft())        
         
         
         # Make sure the display is correct for whatever camera source 
         # we initiallylly have selected
         self.cam_source_changed()
         self.show()
+        self.recordFolderLabel.setText(self.recordFolder)
+
 
         
         
@@ -196,7 +202,7 @@ class CAS_GUI(QMainWindow):
         self.sourceButton = self.create_menu_button("Image Source", QIcon(os.path.join(self.resPath, 'icons', 'camera_white.svg')), self.source_button_clicked, True, menuButton = True)
         self.saveAsButton = self.create_menu_button("Save Image As", QIcon(os.path.join(self.resPath, 'icons', 'save_white.svg')), self.save_as_button_clicked, False)
         self.snapButton = self.create_menu_button("Snap Image", QIcon(os.path.join(self.resPath, 'icons', 'download_white.svg')), self.snap_button_clicked, False )
-        self.recordButton = self.create_menu_button("Record", QIcon(os.path.join(self.resPath, 'icons', 'film_white.svg')), self.record_button_clicked, False )
+        self.recordButton = self.create_menu_button("Record", QIcon(os.path.join(self.resPath, 'icons', 'film_white.svg')), self.record_button_clicked, False, menuButton = True)
         self.settingsButton = self.create_menu_button("Settings", QIcon(os.path.join(self.resPath, 'icons', 'settings_white.svg')), self.settings_button_clicked, True, menuButton = True)
         self.menuLayout.addStretch()
         self.exitButton = self.create_menu_button("Exit", QIcon(os.path.join(self.resPath, 'icons', 'exit_white.svg')), self.exit_button_clicked, False)
@@ -231,7 +237,7 @@ class CAS_GUI(QMainWindow):
         # Create Menu Panels
         self.settingsPanel = self.create_settings_panel()
         self.sourcePanel = self.create_source_panel()
-              
+        self.recordPanel = self.create_record_panel()              
 
         # Image Control Area
         self.contentPanel = QWidget()
@@ -240,7 +246,6 @@ class CAS_GUI(QMainWindow):
         self.contentPanel.setContentsMargins(0, 0, 0, 0)
         self.contentLayout.setContentsMargins(0, 0, 0, 0)
         #self.contentPanel.setStyleSheet("QWidget{padding:20px;margin:20px;background-color:rgba(40,40,40,255);}")
-
        
         self.mainDisplay, self.mainDisplayFrame = self.create_image_display()    
 
@@ -264,22 +269,22 @@ class CAS_GUI(QMainWindow):
         """ Creates a main menu button.
         
         Keyword Arguments:
-            text      : str
-                        button text (default is no text)
-            icon      : QIcon
-                        icon to place on button (defualt is no icon)
-            handler   : function
-                        function to call when button is clicked (defualt is no handler)
-            hold      : boolean
-                        if True, button is checkable, i.e. can toggle on and off. 
-                        (defualt is False)
+            text       : str
+                         button text (default is no text)
+            icon       : QIcon
+                         icon to place on button (defualt is no icon)
+            handler    : function
+                         function to call when button is clicked (defualt is no handler)
+            hold       : boolean
+                         if True, button is checkable, i.e. can toggle on and off. 
+                         (defualt is False)
             menuButton : boolean
                          if true, will be registered so that button will be unchecked                         
                          when another menu is opened
             position   : int
                          is specified, button will be inserted at this position from top             
         Returns:
-            QButton : reference to button 
+            QButton    : reference to button 
         """    
         
         button = QPushButton(" " + text)
@@ -360,6 +365,60 @@ class CAS_GUI(QMainWindow):
         self.add_settings(self.settingsLayout)
                 
         self.settingsLayout.addStretch()        
+        
+        return panel
+    
+    
+    def create_record_panel(self):
+        """ Creates expanding panel for recording. 
+        """
+        
+        panel, self.recordLayout = self.panel_helper(title = "Record")
+        
+         
+        self.recordRawCheck = QCheckBox("Record Raw")
+        self.recordLayout.addWidget(self.recordRawCheck)
+        
+        self.recordTifCheck = QCheckBox("Record Tif")
+        self.recordLayout.addWidget(self.recordTifCheck)
+        
+        self.recordBufferCheck = QCheckBox("Buffered")
+        self.recordLayout.addWidget(self.recordBufferCheck)
+        
+        self.recordBufferSpin = QSpinBox(objectName = "Record Buffer Size")
+        self.recordLayout.addWidget(QLabel("Buffer Size:"))
+        self.recordLayout.addWidget(self.recordBufferSpin)
+        self.recordBufferSpin.setMaximum(1000)
+        
+        self.recordLayout.addItem(QSpacerItem(60, 60, QSizePolicy.Minimum, QSizePolicy.Minimum))
+
+                
+        
+        self.recordFolderButton = QPushButton("Choose Folder")
+        self.recordFolderButton.clicked.connect(self.record_folder_clicked)
+        self.recordLayout.addWidget(self.recordFolderButton) 
+        
+       
+        self.recordFolderLabel = QLabel()
+        self.recordFolderLabel.setWordWrap(True)
+        self.recordFolderLabel.setProperty("status", "true")
+        self.recordFolderLabel.setTextFormat(Qt.RichText)
+        self.recordLayout.addWidget(self.recordFolderLabel)
+        
+        self.recordLayout.addItem(QSpacerItem(60, 60, QSizePolicy.Minimum, QSizePolicy.Minimum))
+
+        
+        self.toggleRecordButton = QPushButton("Start Recording")
+        self.toggleRecordButton.clicked.connect(self.toggle_record_button_clicked)
+        self.recordLayout.addWidget(self.toggleRecordButton)
+        
+        self.recordStatusLabel = QLabel()
+        self.recordStatusLabel.setWordWrap(True)
+        self.recordStatusLabel.setProperty("status", "true")
+        self.recordStatusLabel.setTextFormat(Qt.RichText)
+        self.recordLayout.addWidget(self.recordStatusLabel)
+        
+        self.recordLayout.addStretch()        
         
         return panel
     
@@ -701,29 +760,33 @@ class CAS_GUI(QMainWindow):
                 gotProcessedImage = True
                 self.currentProcessedImage = self.imageProcessor.get_next_image()
         
+        # We don't have a processor, so will be raw only:
         elif self.imageThread is not None:
             
             self.currentProcessedImage = None 
          
-            if self.imageThread.is_image_ready():
-                rawImage  = self.imageThread.get_latest_image()
+         #   if self.imageThread.is_image_ready():
+          #      rawImage  = self.imageThread.get_latest_image()
+                
         
         else:
             
             self.currentProcessedImage = None 
 
         
+        # If there is a raw image ready, pull it off
         if self.imageThread is not None:
 
-            rawImage  = self.imageThread.get_latest_image()
-               
-            if rawImage is not None:
-                gotRawImage = True
-                self.currentImage = rawImage        
-
+            if self.imageThread.is_image_ready():
+                rawImage  = self.imageThread.get_next_image()
+                if rawImage is not None:
+                    gotRawImage = True
+                    self.currentImage = rawImage        
+        
+        
         if self.recording and self.videoOut is not None:
             
-            if self.currentProcessedImage is not None and gotProcessedImage:
+            if self.recordRaw is False and self.currentProcessedImage is not None and gotProcessedImage:
                 imToSave = self.currentProcessedImage
             elif self.currentImage is not None and gotRawImage:  
                 imToSave = self.currentImage
@@ -731,17 +794,25 @@ class CAS_GUI(QMainWindow):
                 imToSave = None 
             
             if imToSave is not None:
-                self.numFramesRecorded = self.numFramesRecorded + 1
-                if imToSave.ndim  == 3:
-                    outImg = imToSave
-                else:
-                    outImg = np.zeros((np.shape(imToSave)[0], np.shape(imToSave)[1], 3), dtype = 'uint8')
-                    outImg[:,:,0] = imToSave
-                    outImg[:,:,1] = imToSave
-                    outImg[:,:,2] = imToSave
+                if self.recordBuffered:
+                    self.numFramesBuffered = self.numFramesBuffered + 1
+                    if self.numFramesBuffered <= self.recordBufferSize:
+                        self.recordBuffer.append(imToSave)
+                        self.recordStatusLabel.setText(f"Buffered {self.numFramesBuffered} frames of {self.recordBufferSize}.")
+                    else:
+                        self.record_buffer_full()
+                else:                                  
+                    self.numFramesRecorded = self.numFramesRecorded + 1
+                    if self.recordType == self.AVI:
+                        outImg = self.im_to_vid_frame(imToSave)
+                        self.videoOut.write(outImg)
+                    if self.recordType == self.TIF:
+                        im = Image.fromarray(imToSave)
+                        im.save(self.videoOut)
+                        self.videoOut.newFrame()
+
                     
-                self.videoOut.write(outImg)
-            
+                    self.recordStatusLabel.setText(f"Recorded {self.numFramesRecorded} frames.")
 
     def update_image_display(self):
        """ Displays the current raw image. 
@@ -888,13 +959,13 @@ class CAS_GUI(QMainWindow):
                 
             self.imageThread = ImageAcquisitionThread('SimulatedCamera', self.rawImageBufferSize, self.acquisitionLock, filename=self.sourceFilename)
             #self.imageThread = ImageAcquisitionHandler('SimulatedCamera', self.rawImageBufferSize, filename=self.sourceFilename )
-            
             self.cam = self.imageThread.get_camera()
             self.cam.pre_load(-1)
         else:
             QApplication.setOverrideCursor(Qt.WaitCursor)
-            self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock)
+            self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock, filename=self.sourceFilename)
             QApplication.restoreOverrideCursor()
+            
 
 
         # Sub-classes can overload create_processor to create processing threads
@@ -974,7 +1045,7 @@ class CAS_GUI(QMainWindow):
 
         else:
             # If there is no processed image, try saving the raw image
-            self.save_raw_as(0)
+            self.save_raw_as()
 
     def save_raw_as(self):
         """ Requests filename then saves current raw image.
@@ -1165,17 +1236,42 @@ class CAS_GUI(QMainWindow):
         """ Handles click of record button.
         """
         
+        #if self.recording is False:
+        #    self.start_recording()
+        #    self.recordButton.setChecked(True)
+        #else:
+        #    self.stop_recording()
+        #    self.recordButton.setChecked(False)
+
+        #self.update_GUI()
+        self.expanding_menu_clicked(self.recordButton, self.recordPanel)
+
+    
+    def toggle_record_button_clicked(self):
+        
         if self.recording is False:
             self.start_recording()
-            self.recordButton.setChecked(True)
         else:
-            self.stop_recording()
-            self.recordButton.setChecked(False)
+            if self.recordBuffered:
+                self.record_buffer_full()
 
         self.update_GUI()
         
-    
-    
+        
+    def record_folder_clicked(self):
+         """ Requests folder to save recordings to
+         """
+         try:
+             folder = QFileDialog.getExistingDirectory(self, 'Select filename to save to:')
+         except:
+             folder = None
+         if folder is not None and folder != "":
+             self.recordFolder = folder
+             self.recordFolderLabel.setText(self.recordFolder)
+         else:
+             QMessageBox.about(self, "Error", "Invalid folder.")  
+
+        
     
     def save_image_ac(self, img, fileName):
         """ Utility function to save 16 bit image 'img' to file 'fileName' with autoscaling """   
@@ -1263,21 +1359,121 @@ class CAS_GUI(QMainWindow):
 
     def start_recording(self):
         
-        filename = 'test.avi'
-        fourcc = cv.VideoWriter_fourcc(*"MJPG")
-        imSize = (np.shape(self.currentImage)[1],np.shape(self.currentImage)[0]) 
-        self.numFramesRecorded = 0
+        if self.recordTifCheck.isChecked():
+            self.recordType = self.TIF
+        else:
+            self.recordType = self.AVI
+        
+        now = datetime.now()
+        if self.recordType == self.TIF:
+            self.recordFilename = (self.recordFolder / Path(now.strftime('record_Y_%m_%d_%H_%M_%S.tif'))).as_posix()
+        else:
+            self.recordFilename = (self.recordFolder / Path(now.strftime('record_Y_%m_%d_%H_%M_%S.avi'))).as_posix()
 
-        self.videoOut = cv.VideoWriter(filename, fourcc, 20.0, imSize)
-        self.recording = True
+            
+        
+        self.recordBuffered = self.recordBufferCheck.isChecked()
+        self.recordBufferSize = self.recordBufferSpin.value()
+        
+        self.numFramesRecorded = 0
+        self.numFramesBuffered = 0
+        
+        if self.recordRawCheck.isChecked() or self.imageProcessor is None:
+            self.recordRaw = True
+            recordImage = self.currentImage
+        else:
+            self.recordRaw = False
+            recordImage = self.currentProcessedImage
+            
+        if recordImage is None:
+            QMessageBox.about(self, "Error", f"There is no image to record.")
+            return
+
+
+        if self.recordType == self.TIF:
+            self.videoOut = TiffImagePlugin.AppendingTiffWriter(self.recordFilename)
+            success = True
+        else:    
+            success = self.create_video_file(recordImage)
+
+        if success:
+            self.recording = True
+            self.toggleRecordButton.setText("Stop Recording")
+            self.recordRawCheck.setEnabled(False)
+            self.recordFolderButton.setEnabled(False)
+        else:
+            self.recording = False
+            self.toggleRecordButton.setText("Start Recording")
+            self.recordRawCheck.setEnabled(True)
+            self.recordFolderButton.setEnabled(True)
+            QMessageBox.about(self, "Error", f"Unable to create video file.")
+            
+            
+
+    def create_video_file(self, exampleImage):
+        
+        try:
+            fourcc = cv.VideoWriter_fourcc(*"MJPG")
+            imSize = (np.shape(exampleImage)[1],np.shape(exampleImage)[0]) 
+            self.numFramesRecorded = 0
+            self.videoOut = cv.VideoWriter(self.recordFilename, fourcc, 20.0, imSize)
+            
+            return True
+
+        except:
+            return False
+       
+    
+    def record_buffer_full(self):
+        
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        
+        self.recording = False
+
+        for idx, imToSave in enumerate(self.recordBuffer):
+          
+            if imToSave is not None:
+                self.numFramesRecorded = self.numFramesRecorded + 1
+                
+                if self.recordType == self.AVI:
+                    outImg = self.im_to_vid_frame(imToSave)
+                    self.videoOut.write(outImg)
+                elif self.recordType == self.TIF:
+                    im = Image.fromarray(imToSave)
+                    im.save(self.videoOut)
+                    self.videoOut.newFrame()
+              
+            self.recordStatusLabel.setText(f"Saved {idx + 1} frames.")
+        self.recordBuffer = []
+        self.numFramesBuffered = 0
+        self.stop_recording()
+        QApplication.restoreOverrideCursor()
+        
+        
         
         
     def stop_recording(self):
-        if self.videoOut is not None:
+        if self.recordType == self.AVI and self.videoOut is not None:
             self.videoOut.release()
         self.videoOut = None
         self.recording = False
+        self.toggleRecordButton.setText("Start Recording")
+        self.recordRawCheck.setEnabled(True)
+        self.recordFolderButton.setEnabled(True)
+
+
+
+
+    def im_to_vid_frame(self, imToSave):
         
+        if imToSave.ndim  == 3:
+            return imToSave
+        else:
+            outImg = np.zeros((np.shape(imToSave)[0], np.shape(imToSave)[1], 3), dtype = 'uint8')
+            outImg[:,:,0] = imToSave
+            outImg[:,:,1] = imToSave
+            outImg[:,:,2] = imToSave
+            return outImg
     
     def cam_source_changed(self):
         """ Deals with user changing camera source option, including adjusting

@@ -29,16 +29,15 @@ class SimulatedCamera(GenericCameraInterface):
         self.frameRateEnabled = False
         if self.filename is not None:
             self.dataset = Image.open(self.filename)
-
-        pass
+         
                    
         
     def __str__(self):
-        return "Simmulated Camera, source = " + self.filename  
+        return "Simmulated Camera, source = " + str(self.filename) 
     
 
     def get_camera_list(self):
-        return "Simulated Camera, source = " + self.filename  
+        return "Simulated Camera, source = " + str(self.filename ) 
      
         
     def open_camera(self, camID):        

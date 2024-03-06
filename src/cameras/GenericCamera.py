@@ -81,7 +81,7 @@ class GenericCameraInterface:
     def get_exposure(self):
         return 0
     
-    def get_exposurerange(self):
+    def get_exposure_range(self):
         return (0,0) 
     
         

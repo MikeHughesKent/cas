@@ -39,6 +39,7 @@ class ImageAcquisitionThread(threading.Thread):
         self.currentFrameNumber = 0
         self.isPaused = False
         self.isOpen = True
+        #self.cam = None
         
         self.numRemoveWhenFull = 1
         
@@ -119,8 +120,6 @@ class ImageAcquisitionThread(threading.Thread):
         """
         
         while self.is_image_ready() is False:
-            print(self.is_image_ready())
-
             pass
         try:
             if self.acquisitionLock is not None: self.acquisitionLock.acquire()
@@ -194,6 +193,7 @@ class ImageAcquisitionThread(threading.Thread):
         """
         self.isOpen = False
         time.sleep(0.5)
-        self.cam.close_camera()
-        self.cam.dispose()
-        del(self.cam)
+        if self.cam is not None:
+            self.cam.close_camera()
+            self.cam.dispose()
+            del(self.cam)

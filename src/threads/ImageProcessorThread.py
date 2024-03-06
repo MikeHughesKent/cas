@@ -92,7 +92,6 @@ class ImageProcessorThread(threading.Thread):
                              self.currentOutputImage = self.process_frame(self.currentInputImage)
                              self.outputQueue.put(self.currentOutputImage)
 
-
                      
                          # Timing
                          self.currentFrameNumber = self.currentFrameNumber + 1
