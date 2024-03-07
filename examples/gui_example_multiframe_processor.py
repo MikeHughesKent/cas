@@ -4,7 +4,7 @@ Kent-CAS: Camera Acquisition System
 
 Example thread for simple Gaussian filtering of an image. 
 
-To test this thread use GUI_example.py
+To test this thread use GUI_example_multi.py
 
 This subclasses ImageProcessorThread which provides all the core functionality
 of the thread, including handling the image queues. We therefore only need
@@ -14,17 +14,14 @@ to implement the process_frame function.
 
 """
 
-from scipy.ndimage import gaussian_filter
+import numpy as np
+
+from ImageProcessorThread import ImageProcessorThread
 
 
-#from ImageProcessorThread import ImageProcessorThread
-
-
-class FilterProcessor():
+class AverageProcessor(ImageProcessorThread):
     
-    applyFilter = False
-    filterSize = None   
-    
+       
     def __init__(self, inBufferSize, outBufferSize, **kwargs):
         """ Technically not needed since we are not adding anything, but
         if any additional initialisation is needed, it goes here.
@@ -36,11 +33,14 @@ class FilterProcessor():
     def process_frame(self, inputFrame):
         """ This is where we do the processing.
         """
-        if self.applyFilter and self.filterSize > 0:
-            outputFrame = gaussian_filter(inputFrame, self.filterSize)
+        
+        # If we have a stack of frames, take the average
+        if inputFrame.ndim == 3:
+            outputFrame = np.mean(inputFrame,2)
         else:
             outputFrame = inputFrame
+        
         return outputFrame
-   
+
    
        

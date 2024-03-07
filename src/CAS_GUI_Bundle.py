@@ -45,7 +45,6 @@ from CAS_GUI_Base import CAS_GUI
 
 from ImageAcquisitionThread import ImageAcquisitionThread
 from image_display import ImageDisplay
-from BundleProcessorHandler import BundleProcessorHandler
 from BundleProcessor import BundleProcessor
 
 import pybundle
@@ -54,6 +53,8 @@ import pybundle
 class CAS_GUI_Bundle(CAS_GUI):
     
     mosaicingEnabled = True
+    multicore = True
+    processor = BundleProcessor
     authorName = "AOG"
     appName = "CAS-Bundle"
     camSource = 'SimulatedCamera'
@@ -63,8 +64,10 @@ class CAS_GUI_Bundle(CAS_GUI):
     def __init__(self,parent=None):                      
         
         super(CAS_GUI_Bundle, self).__init__(parent)
+        
         self.mosaic_options_changed()
-
+        
+        
         
     # Overloaded, call by superclass    
     def create_layout(self):
@@ -109,22 +112,7 @@ class CAS_GUI_Bundle(CAS_GUI):
     def start_acquire(self):
         super().start_acquire()
         
-        
-    def create_processors(self):
-        """ Overrides base class"""
-        if self.imageThread is not None:
-            inputQueue = self.imageThread.get_image_queue()
-        else:
-            inputQueue = None
-        self.imageProcessor = BundleProcessor(10,10, inputQueue = inputQueue, mosaic = self.mosaicingEnabled)
-        
-        if self.imageProcessor is not None:
-            self.imageProcessor.start()
-        
-        if self.mosaicingEnabled:
-            self.mosaic_options_changed()
-        self.processing_options_changed()
-      
+                
         
     
     def create_settings_panel(self):
@@ -353,9 +341,9 @@ class CAS_GUI_Bundle(CAS_GUI):
            self.mainDisplay.set_image(self.currentProcessedImage)
         elif self.currentImage is not None:
            self.mainDisplay.set_image(self.currentImage)
-       
-        if self.mosaicingEnabled and self.imageProcessor.get_mosaic() is not None:
-               self.mosaicDisplay.set_image(self.imageProcessor.get_mosaic())       
+        if self.imageProcessor is not None:
+            if self.mosaicingEnabled and self.imageProcessor.get_processor().get_mosaic() is not None:
+                self.mosaicDisplay.set_image(self.imageProcessor.get_processor().get_mosaic())       
         
     
     def processing_options_changed(self):
@@ -377,64 +365,64 @@ class CAS_GUI_Bundle(CAS_GUI):
         else:
             self.backgroundStatusLabel.setText("None")
 
-            
 
-        
         if self.imageProcessor is not None:
             if self.bundleCoreMethodCombo.currentIndex() == FILTER:
                 self.calibStatusLabel.setText("")
             elif self.bundleCoreMethodCombo.currentIndex() == INTERPOLATE:
-                if self.imageProcessor.pyb.calibration is None:
+                if self.imageProcessor.get_processor().pyb.calibration is None:
                     self.calibStatusLabel.setText("None")
                 else:
-                    self.calibStatusLabel.setText(f"<b>Calibration:</b> <br> Found {self.imageProcessor.pyb.calibration.nCores[0]} cores.")
+                    self.calibStatusLabel.setText(f"<b>Calibration:</b> <br> Found {self.imageProcessor.get_processor().pyb.calibration.nCores[0]} cores.")
         else:
             self.calibStatusLabel.setText(f"None")
-
             
                    
         if self.imageProcessor is not None:
     
-            self.imageProcessor.pyb.gridSize = self.bundleGridSizeInput.value()
+            self.imageProcessor.get_processor().gridSize = self.bundleGridSizeInput.value()
             if self.bundleCoreMethodCombo.currentIndex() == 0:
-                self.imageProcessor.pyb.set_core_method(self.imageProcessor.pyb.FILTER)
+                self.imageProcessor.get_processor().pyb.set_core_method(self.imageProcessor.get_processor().pyb.FILTER)
             elif self.bundleCoreMethodCombo.currentIndex() == 1:
-                self.imageProcessor.pyb.set_core_method(self.imageProcessor.pyb.TRILIN)    
+                self.imageProcessor.get_processor().pyb.set_core_method(self.imageProcessor.get_processor().pyb.TRILIN)    
                 
-            self.imageProcessor.pyb.filterSize = self.bundleFilterSizeInput.value()
+            self.imageProcessor.get_processor().pyb.filterSize = self.bundleFilterSizeInput.value()
             if self.bundleCropCheck.isChecked():
                 self.imageProcessor.crop = (self.bundleCentreXInput.value(), self.bundleCentreYInput.value(), self.bundleRadiusInput.value())
             else:
                 self.imageProcessor.crop = None
                 
-            self.imageProcessor.pyb.set_loc((self.bundleCentreXInput.value(), self.bundleCentreYInput.value(), self.bundleRadiusInput.value()))
-            self.imageProcessor.pyb.set_crop(self.bundleCropCheck.isChecked())
-            self.imageProcessor.pyb.set_auto_contrast(False)
+            self.imageProcessor.get_processor().pyb.set_loc((self.bundleCentreXInput.value(), self.bundleCentreYInput.value(), self.bundleRadiusInput.value()))
+            self.imageProcessor.get_processor().pyb.set_crop(self.bundleCropCheck.isChecked())
+            self.imageProcessor.get_processor().pyb.set_auto_contrast(False)
             if self.bundleMaskCheck.isChecked():
-                self.imageProcessor.pyb.set_apply_mask(True) 
-                self.imageProcessor.pyb.set_auto_mask(True)
+                self.imageProcessor.get_processor().pyb.set_apply_mask(True) 
+                self.imageProcessor.get_processor().pyb.set_auto_mask(True)
             else:
-                self.imageProcessor.pyb.set_apply_mask(False) 
-                self.imageProcessor.pyb.set_mask(None)
+                self.imageProcessor.get_processor().pyb.set_apply_mask(False) 
+                self.imageProcessor.get_processor().pyb.set_mask(None)
+
                 
             if self.bundleSubtractBackCheck.isChecked():
-                self.imageProcessor.pyb.set_background(self.backgroundImage)
+                self.imageProcessor.get_processor().pyb.set_background(self.backgroundImage)
             else:
-                self.imageProcessor.pyb.set_background(None)
+                self.imageProcessor.get_processor().pyb.set_background(None)
 
         
             if self.bundleNormaliseCheck.isChecked():
-                self.imageProcessor.pyb.set_normalise_image(self.backgroundImage)   
+                self.imageProcessor.get_processor().pyb.set_normalise_image(self.backgroundImage)   
             else:
-                self.imageProcessor.pyb.set_normalise_image(None)
+                self.imageProcessor.get_processor().pyb.set_normalise_image(None)
 
     
-            self.imageProcessor.pyb.outputType = 'float'
+            self.imageProcessor.get_processor().pyb.outputType = 'float'
             
             if self.bundleCoreMethodCombo.currentIndex() == FILTER:
-                self.imageProcessor.pyb.set_filter_size(self.bundleFilterSizeInput.value())   
+                self.imageProcessor.get_processor().pyb.set_filter_size(self.bundleFilterSizeInput.value())   
             elif self.bundleCoreMethodCombo.currentIndex() == INTERPOLATE:
-                self.imageProcessor.pyb.set_filter_size(self.bundleInterpFilterInput.value())  
+                self.imageProcessor.get_processor().pyb.set_filter_size(self.bundleInterpFilterInput.value())  
+            
+            
             self.imageProcessor.update_settings()    
                                     
             # If we are processing a single file, we should make sure this
@@ -461,10 +449,11 @@ class CAS_GUI_Bundle(CAS_GUI):
         if self.backgroundImage is not None and self.imageProcessor is not None:
             
             QApplication.setOverrideCursor(Qt.WaitCursor)
-            self.imageProcessor.pyb.set_calib_image(self.backgroundImage)
-            self.imageProcessor.pyb.set_background(self.backgroundImage)
-            self.imageProcessor.pyb.set_normalise_image(self.backgroundImage)
-            self.imageProcessor.pyb.calibrate()
+            self.imageProcessor.get_processor().pyb.set_calib_image(self.backgroundImage)
+            self.imageProcessor.get_processor().pyb.set_background(self.backgroundImage)
+            self.imageProcessor.get_processor().pyb.set_normalise_image(self.backgroundImage)
+            self.imageProcessor.get_processor().pyb.calibrate()
+            print(self.imageProcessor.get_processor().pyb.calibration)
             QApplication.restoreOverrideCursor()
 
         else:
@@ -475,12 +464,12 @@ class CAS_GUI_Bundle(CAS_GUI):
             
     def save_calibration_clicked(self):
         with open('calib.dat','wb') as pickleFile:
-            pickle.dump(self.imageProcessor.pyb.calibration, pickleFile)
+            pickle.dump(self.imageProcessor.get_processor().pyb.calibration, pickleFile)
 
         
     def load_calibration_clicked(self):
         with open('calib.dat', 'rb') as pickleFile:
-            self.imageProcessor.pyb.calibration = pickle.load(pickleFile)
+            self.imageProcessor.get_processor().pyb.calibration = pickle.load(pickleFile)
         self.processing_options_changed()
         
     def reset_mosaic_clicked(self):

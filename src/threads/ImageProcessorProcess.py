@@ -43,11 +43,15 @@ class ImageProcessorProcess(multiprocessing.Process):
     def __init__(self, inQueue, outQueue, updateQueue):
         
         
-        super().__init__()        
+        super().__init__()  
+        
+        print("Proess init")
                       
         self.updateQueue = updateQueue
         self.inputQueue = inQueue
         self.outputQueue = outQueue
+        
+        print(f" PROC: {self.inputQueue}")
             
         self.lastFrameTime = 0
         self.frameStepTime = 0
@@ -63,7 +67,6 @@ class ImageProcessorProcess(multiprocessing.Process):
 
         while True:
             
-            #print("running processor")
             
             # Get an updated processor object
             if self.updateQueue.qsize() > 0:
@@ -71,39 +74,41 @@ class ImageProcessorProcess(multiprocessing.Process):
             
             if self.processor is not None:
                 
-                #t1 = time.perf_counter()
                 
                 try:
-                    im = self.inputQueue.get()
-                   
+                    im = self.inputQueue.get_nowait()
                 except:
-                    #print("No image in queue")
-                    return
-                
-                #print("get im time time:" , time.perf_counter() - t1)
-
-                #t1 = time.perf_counter()
-
-                outImage = self.processor.process(im)  
-                
-                #print("Processing time:" , time.perf_counter() - t1)
-                
-                # If the output queue is full we removed an item to make space
-                if self.outputQueue.full():
-                    temp = self.outputQueue.get()
+                    im = None
+                    time.sleep(0.01)
                     
-                self.outputQueue.put(outImage)
-                
-                #print("added to queue")
-                
-                # Timing
-                self.currentFrameNumber = self.currentFrameNumber + 1
-                self.currentFrameTime = time.perf_counter()
-                self.frameStepTime = self.currentFrameTime - self.lastFrameTime
-                self.lastFrameTime = self.currentFrameTime
-                
-               
-                # print("Process frame time:" + str(self.frameStepTime) + "\n")
+                if im is not None:
+                    #print("get im time time:" , time.perf_counter() - t1)
+    
+                    #t1 = time.perf_counter()
+    
+                    outImage = self.processor.process(im)  
+                    #print("processed image")
+                    
+                    #print("Processing time:" , time.perf_counter() - t1)
+                    
+                    # If the output queue is full we removed an item to make space
+                    if self.outputQueue.full():
+                        temp = self.outputQueue.get()
+                        
+                    #print("writing to queue") 
+                    #print(self.outputQueue)
+                    self.outputQueue.put(outImage)
+                    
+                    #print("added to queue")
+                    
+                    # Timing
+                    self.currentFrameNumber = self.currentFrameNumber + 1
+                    self.currentFrameTime = time.perf_counter()
+                    self.frameStepTime = self.currentFrameTime - self.lastFrameTime
+                    self.lastFrameTime = self.currentFrameTime
+                    
+                   
+                    # print("Process frame time:" + str(self.frameStepTime) + "\n")
   
        
   

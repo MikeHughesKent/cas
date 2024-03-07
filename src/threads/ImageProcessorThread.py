@@ -19,9 +19,15 @@ import logging
 import multiprocessing
 import numpy as np
 
+from ImageProcessorProcess import ImageProcessorProcess
+
+
 class ImageProcessorThread(threading.Thread):
     
-    def __init__(self, inBufferSize, outBufferSize, **kwargs):
+    process = None
+    updateQueue = None
+    
+    def __init__(self, processor, inBufferSize, outBufferSize, **kwargs):
         
         # Caller passes the name of the camera class (which should be in a
         # module of the same name) in the variable camName. This is dynamically
@@ -29,14 +35,17 @@ class ImageProcessorThread(threading.Thread):
    
         super().__init__()
         
+        self.processor = processor()
         self.inBufferSize = inBufferSize
         self.outBufferSize = outBufferSize
         self.inputQueue = kwargs.get('inputQueue', None)
         self.acquisitionLock = kwargs.get('acquisitionLock', None)
+        self.multicore = kwargs.get('multicore', False)
+      
         if self.inputQueue is None:
-            self.inputQueue = queue.Queue(maxsize=self.inBufferSize)
+            self.inputQueue = multiprocessing.Queue(maxsize=self.inBufferSize)
         #self.inputQueue = queue.Queue(maxsize=self.inBufferSize)
-        self.outputQueue = queue.Queue(maxsize=self.outBufferSize)
+        self.outputQueue = multiprocessing.Queue(maxsize=self.outBufferSize)
 
         self.currentOutputImage = None
         self.currentInputImage = None
@@ -49,72 +58,88 @@ class ImageProcessorThread(threading.Thread):
         self.isStarted = True
         self.batchProcessNum = 1
         
+        # If we are going to use a different core to do processing, then we need
+        # to start a process on that core.
+        
+        if self.multicore:
+            # Queue for sending updates on how to do the processing
+            self.updateQueue = multiprocessing.Queue()
+            
+            # Create the process and set it running
+            self.process = ImageProcessorProcess(self.inputQueue, self.outputQueue, self.updateQueue)
+            self.process.start()
+            self.updateQueue.put(self.processor)
+            print("starting process")
+            
+        
     
         
     # This loop is run once the thread starts
     def run(self):
+
         
-        
+         # If we are doing multicore, we do nothing here because we should already
+         # have the processor running on another core
+         if self.multicore:
+             time.sleep(0.1)
          
-         while self.isStarted:
-             
-             
-             if not self.isPaused:
+         else:    
+             while self.isStarted:
                  
-                 self.handle_flags() 
-
-
-                 # Stop output queue overfilling
-                 if self.outputQueue.full():
-                     for i in range(self.batchProcessNum):
-                         temp = self.outputQueue.get()
-                     
-                # Check we have got at least as many images as we intend to batch process  
-                # print(self.get_num_images_in_input_queue(), " in queue")
-                # print(self.batchProcessNum)
-                 if self.get_num_images_in_input_queue() >= self.batchProcessNum:
-
-                     if self.acquisitionLock is not None: self.acquisitionLock.acquire()
-                     try:
-
-                         if self.batchProcessNum > 1:
-                             img = self.inputQueue.get()
-                             self.currentInputImage = np.zeros((np.shape(img)[0], np.shape(img)[1], self.batchProcessNum))
-                             self.currentInputImage[:,:,0] = img
-                             for i in range(1, self.batchProcessNum):
-                                 self.currentInputImage[:,:,i] = self.inputQueue.get()
-                             self.currentOutputImage = self.process_frame(self.currentInputImage)
-                             self.outputQueue.put(self.currentOutputImage)
-
-
-                         else:
-                             self.currentInputImage = self.inputQueue.get()
-                             self.currentOutputImage = self.process_frame(self.currentInputImage)
-                             self.outputQueue.put(self.currentOutputImage)
-
-
-                     
-                         # Timing
-                         self.currentFrameNumber = self.currentFrameNumber + 1
-                         self.currentFrameTime = time.perf_counter()
-                         self.frameStepTime = self.currentFrameTime - self.lastFrameTime
-                         self.lastFrameTime = self.currentFrameTime
                  
-                     except queue.Empty:
-                         print("No image in queue")
+                 if not self.isPaused:
                      
-                     if self.acquisitionLock is not None: self.acquisitionLock.release()
-
-                 else:
-                     time.sleep(0.01)
-               
-                
+                     self.handle_flags()     
+                     # Stop output queue overfilling
+                     if self.outputQueue.full():
+                         for i in range(self.batchProcessNum):
+                             temp = self.outputQueue.get()
+                   
+                     if self.get_num_images_in_input_queue() >= self.batchProcessNum:
+                         
     
+                         if self.acquisitionLock is not None: self.acquisitionLock.acquire()
+                         try:
+                             if self.batchProcessNum > 1:
+                                 img = self.inputQueue.get()
+                                 self.currentInputImage = np.zeros((np.shape(img)[0], np.shape(img)[1], self.batchProcessNum))
+                                 self.currentInputImage[:,:,0] = img
+                                 for i in range(1, self.batchProcessNum):
+                                     self.currentInputImage[:,:,i] = self.inputQueue.get()
+                                 self.currentOutputImage = self.process_frame(self.currentInputImage)
+                                 self.outputQueue.put(self.currentOutputImage)
+    
+    
+                             else:
+                                 self.currentInputImage = self.inputQueue.get()
+                                 self.currentOutputImage = self.process_frame(self.currentInputImage)
+
+                                 self.outputQueue.put(self.currentOutputImage)
+    
+                             # Timing
+                             self.currentFrameNumber = self.currentFrameNumber + 1
+                             self.currentFrameTime = time.perf_counter()
+                             self.frameStepTime = self.currentFrameTime - self.lastFrameTime
+                             self.lastFrameTime = self.currentFrameTime
+                     
+                         except queue.Empty:
+                             print("No image in queue")
+                         
+                         if self.acquisitionLock is not None: self.acquisitionLock.release()
+    
+                     else:
+                         time.sleep(0.01)
+                   
+                
+    def get_processor(self):
+        return self.processor
      
+        
     ######### Override to provide code for processing the input frame
     def process_frame(self, inputFrame):
-        return None  
-    
+        
+        ret = self.processor.process(inputFrame) 
+        return ret
         
     
     ######### Override with code that should be run on each iteration
@@ -175,7 +200,8 @@ class ImageProcessorThread(threading.Thread):
     
     
     def get_actual_fps(self):
-        if self.frameStepTime > 0:
+        
+        if not self.multicore and self.frameStepTime > 0:
             return (1 / self.frameStepTime)
         else:
             return 0
@@ -215,9 +241,14 @@ class ImageProcessorThread(threading.Thread):
         return            
               
     def stop(self):
+        print("stopping")
         self.isStarted = False
+        if self.process is not None:
+            print("stopping process")
+            self.process.terminate()
 
   
-    # Here to allow compatibility with ImageProcessorHandler  
+    # This must be over-ridden by subclass if multicore is to be used.  
     def update_settings(self):
-        pass
+        if self.updateQueue is not None:
+            self.updateQueue.put(self.processor)

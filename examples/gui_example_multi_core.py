@@ -18,11 +18,14 @@ from PyQt5.QtWidgets import *
 import context    # Adds paths
 
 from CAS_GUI_Base import *
+from gui_example_processor import FilterProcessor
 from ImageAcquisitionThread import ImageAcquisitionThread
-from image_display import ImageDisplay
-from ImageProcessor import ImageProcessor
+from ImageProcessorThread import ImageProcessorThread
 
+from image_display import ImageDisplay
 from gui_example_filter_class import FilterClass
+
+
 
 
 class example_GUI(CAS_GUI):
@@ -34,11 +37,16 @@ class example_GUI(CAS_GUI):
     authorName = "AOG"
     appName = "Example GUI"
     
-    # GUI window title
-    windowTitle = "Kent Camera Acquisition System: Example"
+    # We are going to make use of multiple cores by running the processing
+    # on a different core to the GUI and image acquirer
+    multicore = True
     
-    # Define the image processor
+    # Define the processor class which will be used by the ImageProcessor thread
+    # to process the images    
     processor = FilterClass
+    
+    # GUI window title
+    windowTitle = "Kent Camera Acquisition System: Example with multi cores"
         
     # Define available cameras interface and their display names in the drop-down menu
     camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
@@ -64,8 +72,8 @@ class example_GUI(CAS_GUI):
         settingsLayout.addWidget(self.filterSizeInput)  
         self.filterSizeInput.valueChanged[int].connect(self.processing_options_changed)
         
-        
-    
+  
+
 
     def processing_options_changed(self,event):
         """
@@ -81,6 +89,12 @@ class example_GUI(CAS_GUI):
             self.imageProcessor.get_processor().filterSize = self.filterSizeInput.value()
             self.imageProcessor.get_processor().applyFilter = self.filterCheckBox.isChecked()
 
+            
+            # If using multicore, it's essential to call update_settings once 
+            # we are done so that the settigns are sent across to the core
+            # where the processor is running
+            self.imageProcessor.update_settings()
+            
         # The new processing will be applied to the next image grabbed from a 
         # camera. However, if we are processing an image from a file, we normally
         # want to apply the new processing immediately, so we need to call

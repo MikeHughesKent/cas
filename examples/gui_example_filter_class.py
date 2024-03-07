@@ -17,23 +17,23 @@ to implement the process_frame function.
 from scipy.ndimage import gaussian_filter
 
 
-#from ImageProcessorThread import ImageProcessorThread
+from ImageProcessorClass import ImageProcessorClass
 
 
-class FilterProcessor():
+class FilterClass(ImageProcessorClass):
     
     applyFilter = False
     filterSize = None   
     
-    def __init__(self, inBufferSize, outBufferSize, **kwargs):
+    def __init__(self, applyFilter = False, filterSize = None):
         """ Technically not needed since we are not adding anything, but
         if any additional initialisation is needed, it goes here.
         """
+        self.applyFilter = applyFilter
+        self.filterSize = filterSize
         
-        super().__init__(inBufferSize, outBufferSize, **kwargs)        
-       
                 
-    def process_frame(self, inputFrame):
+    def process(self, inputFrame):
         """ This is where we do the processing.
         """
         if self.applyFilter and self.filterSize > 0:

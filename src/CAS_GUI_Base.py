@@ -46,8 +46,8 @@ sys.path.append(os.path.abspath("threads"))
 from DoubleSlider import *
 from ImageAcquisitionThread import ImageAcquisitionThread
 from image_display import ImageDisplay
+from ImageProcessorThread import ImageProcessorThread
 
-from ImageAcquisitionHandler import ImageAcquisitionHandler
 from FileInterface import FileInterface
 
 
@@ -86,6 +86,8 @@ class CAS_GUI(QMainWindow):
     # Timer interval defualts (ms)
     GUIupdateInterval = 100
     imagesUpdateInterval = 5
+    
+    processor = None
       
     # Defaults
     currentImage = None
@@ -634,12 +636,36 @@ class CAS_GUI(QMainWindow):
      
     
     def create_processors(self):
-        """Subclasses should overload this to create processing threads."""
-        pass
+        """ If a processor has been defined, create an ImageProcessor thread
+        and pass the details of the processor.
+        """
+        
+        if self.processor is not None:
+        
+            # We will use the queue that the image acquisition thread has created
+            # to act as the input queue, this avoids the need for any copying of images
+            if self.imageThread is not None:
+                inputQueue = self.imageThread.get_image_queue()
+            else:
+                inputQueue = None
+           
+            # Create the processor. 
+            self.imageProcessor = ImageProcessorThread(self.processor, 10, 10, inputQueue = inputQueue, multicore = self.multicore)
+            
+            # Update the processor based on initial values of widgets
+            self.processing_options_changed()
+        
+            # Start the thread
+            if self.imageProcessor is not None:
+                self.imageProcessor.start()
+                
+                
     
-    
+        
     def processing_options_changed(self):
-        """Subclasses should overload this to handle procssing changes"""
+        """Subclasses should overload this to handle processing changes"""
+        
+        
         pass
     
 
@@ -682,7 +708,7 @@ class CAS_GUI(QMainWindow):
         gotProcessedImage = False
         rawImage = None
         
-        
+        #print(self.currentProcessedImage)
         if self.imageProcessor is not None:
             
             # If we have an image processor defined and we are doing manual image
@@ -695,7 +721,7 @@ class CAS_GUI(QMainWindow):
                     rawImage = self.imageThread.get_next_image()
                     if rawImage is not None:
                         self.imageProcessor.add_image(rawImage) 
-            
+
             # If there is a new processed image, pull it off the queue
             if self.imageProcessor.is_image_ready() is True:
                 gotProcessedImage = True
@@ -704,7 +730,6 @@ class CAS_GUI(QMainWindow):
         elif self.imageThread is not None:
             
             self.currentProcessedImage = None 
-         
             if self.imageThread.is_image_ready():
                 rawImage  = self.imageThread.get_latest_image()
         
@@ -1093,6 +1118,7 @@ class CAS_GUI(QMainWindow):
         if self.camOpen:
             self.end_acquire()
         if self.imageProcessor is not None:
+
             self.imageProcessor.stop() 
         self.gui_save()
         active = mp.active_children()
