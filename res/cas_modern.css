@@ -16,10 +16,14 @@ QWidget#contentPanel{
 
 
 QScrollArea { 
-             background-color: rgb(140,140,140); 
+             background-color: rgba(30, 30, 60, 255); 
              padding:0px; 
              border:0px
 }
+
+
+
+
 
 QScrollArea > QWidget > scrollareaContent { background-color: rgb(140,140,140); }
 
@@ -65,8 +69,7 @@ QComboBox {
             background-color:white;
             color: black;
             padding: 6px;
-            margin-bottom: 5px;
-            selection-background-color:rgba(31, 105, 166, 255);
+            margin-bottom: 5px;            
 }
 
 QWidget#menu_panel > QPushButton:hover { background-color: rgba(255, 255, 255, 60) }
@@ -110,7 +113,7 @@ QLabel[subheader="true"] {
 }       
 
 QLabel[status="true"] {
-                       background-color: rgb(40,40,40,255);
+                       background-color: rgba(40,40,40,255);
                        color:white;
                        qproperty-indent:0;
                        padding-top:10px;
