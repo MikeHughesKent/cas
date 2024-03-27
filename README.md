@@ -4,7 +4,7 @@ CAS-GUI is a framework for building graphical user interfaces in Python that
 involves acquiring, processing and displaying images from cameras or 
 camera-type systems
 
-CAS is a hardware abstraction layer for cameras.
+It is based on the CAS hardware abstraction layer for cameras.
 
 CAS and CAS-GUI are developed in 
 [Mike Hughes' lab](https://research.kent.ac.uk/applied-optics/hughes) 
@@ -21,36 +21,35 @@ provide some limited support.
 
 ## Rough Guide
 
-Classes for handling camera communications are in the 'src/cameras' folder. For 
-a specific camera, a new class must be created that inherits from GenericCamera. 
-Override the functions from GenericCamera to implement the relevant 
-functionality. See the other camera python files in the folder for examples.
-
-CAS-GUI (in CAS_GUI_base.py) is the base class for camera GUIs. This can be run 
+The CAS-GUI class (in src/cas_gui/base.py) is the base class for camera GUIs. This can be run 
 as is, and will provide a simple camera image viewer with the possibility to 
 adjust exposure, frame rate and gain. Select the input camera from the 
 drop-down menu in the 'Source' menu and click 'Live Imaging' to begin. 
 It will obviously only work for cameras you have set up on your system - try 
 the Webcam (if you have one) or Simulated Camera first. The Simulated Camera 
-will load a sequence of images from a tif stack in order to simulate camera 
+can load a sequence of images from a tif stack in order to simulate camera 
 acquisition. Alternatively, select the 'File' source to load in a saved image
 or tif stack.
+
+Classes for handling camera communications are in the 'src/cas_gui/cameras' folder. For 
+a specific camera, a new class must be created that inherits from GenericCamera. 
+Override the functions from GenericCamera to implement the relevant 
+functionality. See the other camera python files in the folder for examples.
 
 GUIs are built using PyQt5. Images are displayed using an instance of 
 [ImageDisplayQT](https://www.github.com/mikehugheskent/imagedisplayqt), a widget 
 for displaying scientific images.
 
 To create a GUI for a specific purpose, create a new class that inherits from 
-CAS_GUI. Two simple example are provided in the examples folder - gui_example 
-and gui_multi_example. The former demonstrates how a Gaussian smoothing filter 
+CAS_GUI in base.py. Two simple example are provided in the examples folder - gui_example 
+and gui_multi_frame_example. The former demonstrates how a Gaussian smoothing filter 
 can be applied to the images grabbed from a camera, while the latter 
-demonstrates averaging of frames. The image processing is implemented in 
-gui_example_processor and gui_example_multi_processor, respectively. The
-gui and processor files can be used as templates to begin building GUIs with 
+demonstrates averaging of frames. These 
+guis can be used as templates to begin building GUIs with 
 custom image processing pipelines.
 
 There is also an example of a more complex GUI, CAS_GUI_Bundle, 
-in the src folder, but this is not fully documented.
+in the src/cas_gui/subclasses folder, but this is not fully documented.
 
 
 ## Supported Cameras
@@ -75,7 +74,8 @@ Examples of basic use of CAS are in the examples folder:
 
 * GUI Example - Demonstrates how to sub-class CAS-GUI to produce a simple
 GUI which applies a smoothing filter to the live video display.
-* GUI Example Multi - Demonstrates how to sub-class CAS-GUI to produce a simple
+* GUI Multi Core Example - The same as GUI Example, but uses multiprocessing.
+* GUI Example Multi Frame - Demonstrates how to sub-class CAS-GUI to produce a simple
 GUI which averages multiple frames from the live video display.
 * Simulated Camera Example - Demonstrates how to capture images from a simulated camera which streams images from a tif stack file.
 * Webcamera Example - Demonstrates how to capture monochrome images from a web camera.
