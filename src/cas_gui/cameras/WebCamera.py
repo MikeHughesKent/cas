@@ -9,7 +9,7 @@ import cv2 as cv
 import time
 
 import numpy as np
-from GenericCamera import GenericCameraInterface  
+from cas_gui.cameras.GenericCamera import GenericCameraInterface  
     
         
 class WebCamera(GenericCameraInterface):

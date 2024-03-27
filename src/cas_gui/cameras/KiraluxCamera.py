@@ -11,7 +11,7 @@ from thorlabs_tsi_sdk.tl_camera import TLCameraSDK, TLCamera, Frame
 from thorlabs_tsi_sdk.tl_camera_enums import SENSOR_TYPE
 from thorlabs_tsi_sdk.tl_mono_to_color_processor import MonoToColorProcessorSDK
 import numpy as np
-from GenericCamera import GenericCameraInterface  
+from cas_gui.cameras.GenericCamera import GenericCameraInterface  
     
                 
         

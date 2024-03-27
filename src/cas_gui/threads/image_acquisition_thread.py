@@ -11,8 +11,12 @@ University of Kent
 """
 
 import queue
+import multiprocessing
+from multiprocessing import shared_memory
+
 import threading
 import time
+import importlib
 
 class ImageAcquisitionThread(threading.Thread):
     
@@ -21,8 +25,20 @@ class ImageAcquisitionThread(threading.Thread):
         # Caller passes the name of the camera class (which should be in a
         # module of the same name) in the variable camName. This is dynamically
         # imported here and an instance created as self.cam.
-        camModule = __import__(camName)
-        self.cam = getattr(camModule, camName)(**camArgs)
+        
+        try:
+            moduleName = "cas_gui.cameras." + camName
+            camModule = importlib.import_module(moduleName)
+
+            self.cam = getattr(camModule, camName)(**camArgs)
+        except:    
+            moduleName = camName
+            camModule = importlib.import_module(moduleName)
+
+            self.cam = getattr(camModule, camName)(**camArgs)
+            
+            
+            
         self.acquisitionLock = acquisitionLock
         super().__init__()
                 
@@ -31,7 +47,7 @@ class ImageAcquisitionThread(threading.Thread):
         
         self.bufferSize = bufferSize
                 
-        self.imageQueue = queue.Queue(maxsize=self.bufferSize)
+        self.imageQueue = multiprocessing.Queue(maxsize=self.bufferSize)
         
         self.lastFrameTime = 0
         self.frameStepTime = 0
@@ -67,15 +83,21 @@ class ImageAcquisitionThread(threading.Thread):
                 # Try to get an image. If there is no image ready, this should
                 # return None.
                 frame = self.cam.get_image()
+                #print("getting frame")
 
                 if frame is not None:
+                    #print("frame is not None")
+
                     self.currentFrameNumber = self.currentFrameNumber + 1
                     self.imageQueue.put(frame)
                     self.currentFrame = frame
                     self.currentFrameTime = time.perf_counter()
                     self.frameStepTime = self.currentFrameTime - self.lastFrameTime
                     self.lastFrameTime = self.currentFrameTime
-            
+                else:
+                    pass #time.sleep(0.01)
+            else:
+                time.sleep(0.01)
         
     def get_camera(self):
         """ Returns a reference to the camera object.
@@ -178,6 +200,7 @@ class ImageAcquisitionThread(threading.Thread):
         """ Call to pause image acquisition.
         """
         self.isPaused = True
+        self.flush_buffer()
         return
     
 

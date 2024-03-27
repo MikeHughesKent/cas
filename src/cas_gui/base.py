@@ -39,22 +39,26 @@ from PIL import Image, TiffImagePlugin
 
 import cv2 as cv
 
-sys.path.append(os.path.abspath("widgets"))
-sys.path.append(os.path.abspath("cameras"))
-sys.path.append(os.path.abspath("threads"))
 
-from DoubleSlider import *
-from ImageAcquisitionThread import ImageAcquisitionThread
-from image_display import ImageDisplay
+# Add a path to ourselves in case this module is run
+sys.path.append(r'..\\')  
 
-from ImageAcquisitionHandler import ImageAcquisitionHandler
-from FileInterface import FileInterface
+from cas_gui.widgets.double_slider import DoubleSlider
+from cas_gui.threads.image_acquisition_thread import ImageAcquisitionThread
+from cas_gui.widgets.image_display import ImageDisplay
+from cas_gui.threads.image_processor_thread import ImageProcessorThread
+import cas_gui.res.resources
+from cas_gui.cameras.FileInterface import FileInterface
 
 cuda = True                 # Set to False to disable use of GPU
 multicore = False           # Set to True to run processor on a different core
 
 class CAS_GUI(QMainWindow):
 
+    FILE_TYPE = 0
+    REAL_TYPE = 1
+    SIM_TYPE = 2
+    
     windowTitle = "Kent Camera Acquisition System"
 
     # The values for the fields are stored in the registry using these IDs:
@@ -62,16 +66,17 @@ class CAS_GUI(QMainWindow):
     appName = "CAS"
 
     # Locations for icons etc. 
-    resPath = "..\\res"
+    resPath = "..\\..\\res"
     logoFilename = None
     iconFilename = 'logo_256_red.png'
         
     # Define available cameras interface and their display names in the drop-down menu
     camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
     camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
-          
+    camTypes = [FILE_TYPE, SIM_TYPE, REAL_TYPE, REAL_TYPE, REAL_TYPE, REAL_TYPE, REAL_TYPE]
+     
     # Default source for simulated camera
-    sourceFilename = Path('../examples/data/vid_example.tif')
+    sourceFilename = None
     
     # The size of the queue for raw images from the camera. If this is exceeded
     # then the oldest image will be removed.
@@ -83,8 +88,10 @@ class CAS_GUI(QMainWindow):
     optionsPanelSize = 300
     
     # Timer interval defualts (ms)
-    GUIupdateInterval = 100
+    GUIupdateInterval = 50
     imagesUpdateInterval = 5
+    
+    processor = None
       
     # Defaults
     currentImage = None
@@ -100,16 +107,20 @@ class CAS_GUI(QMainWindow):
     imageProcessor = None
     cam = None
     rawImage = None
+    fallBackToRaw = True
+    multiCore = False
+    sharedMemory = False
+    sharedMemoryArraySize = (1024,1024)
     settings = {}  
     panelsList = []
     menuButtonsList = []
     defaultBackgroundFile = "background.tif"
     backgroundSource = ""
     recordBuffer = []
-  
+
     TIF = 0
-    AVI = 1
-    
+    AVI = 1    
+   
     def __init__(self, parent=None):   
         """ Initial setup of GUI.
         """
@@ -119,13 +130,15 @@ class CAS_GUI(QMainWindow):
         self.defaultIcon = os.path.join(self.resPath, self.iconFilename)
         self.recordFolder = Path.cwd().as_posix()
         
-        
         # Create the GUI. This is generally over-ridden in sub-classes
         self.create_layout()        
+        
         self.set_colour_scheme()
-        file= os.path.join(self.resPath, 'cas_modern.css')
+        
+        file = os.path.join(self.resPath, 'cas_modern.css')
         with open(file,"r") as fh:
             self.setStyleSheet(fh.read())
+        self.set_colour_scheme()
             
         
         # Creates timers for GUI and camera acquisition
@@ -239,6 +252,7 @@ class CAS_GUI(QMainWindow):
         self.sourcePanel = self.create_source_panel()
         self.recordPanel = self.create_record_panel()              
 
+
         # Image Control Area
         self.contentPanel = QWidget()
         self.contentLayout = QHBoxLayout()
@@ -327,6 +341,53 @@ class CAS_GUI(QMainWindow):
             self.setWindowIcon(QtGui.QIcon(iconFilename))
         
         return 
+
+    def create_record_panel(self):
+        """ Creates expanding panel for recording. 
+        """
+        
+        panel, self.recordLayout = self.panel_helper(title = "Record")
+        
+         
+        self.recordRawCheck = QCheckBox("Record Raw", objectName = 'recordRawCheck')
+        self.recordLayout.addWidget(self.recordRawCheck)
+        
+        self.recordTifCheck = QCheckBox("Record Tif", objectName = 'recordTifCheck')
+        self.recordLayout.addWidget(self.recordTifCheck)
+        
+        self.recordBufferCheck = QCheckBox("Buffered", objectName = 'recordBufferwCheck')
+        self.recordLayout.addWidget(self.recordBufferCheck)
+        
+        self.recordBufferSpin = QSpinBox(objectName = "recordBufferSize")
+        self.recordLayout.addWidget(QLabel("Buffer Size:"))
+        self.recordLayout.addWidget(self.recordBufferSpin)
+        self.recordBufferSpin.setMaximum(1000)
+        
+        self.recordLayout.addItem(QSpacerItem(60, 60, QSizePolicy.Minimum, QSizePolicy.Minimum))
+        self.recordFolderButton = QPushButton("Choose Folder")
+        self.recordFolderButton.clicked.connect(self.record_folder_clicked)
+        self.recordLayout.addWidget(self.recordFolderButton) 
+       
+        self.recordFolderLabel = QLabel()
+        self.recordFolderLabel.setWordWrap(True)
+        self.recordFolderLabel.setProperty("status", "true")
+        self.recordFolderLabel.setTextFormat(Qt.RichText)
+        self.recordLayout.addWidget(self.recordFolderLabel)
+        self.recordLayout.addItem(QSpacerItem(60, 60, QSizePolicy.Minimum, QSizePolicy.Minimum))
+
+        self.toggleRecordButton = QPushButton("Start Recording")
+        self.toggleRecordButton.clicked.connect(self.toggle_record_button_clicked)
+        self.recordLayout.addWidget(self.toggleRecordButton)
+        
+        self.recordStatusLabel = QLabel()
+        self.recordStatusLabel.setWordWrap(True)
+        self.recordStatusLabel.setProperty("status", "true")
+        self.recordStatusLabel.setTextFormat(Qt.RichText)
+        self.recordLayout.addWidget(self.recordStatusLabel)
+        
+        self.recordLayout.addStretch()        
+        
+        return panel
 
 
     def panel_helper(self, title = None):
@@ -693,12 +754,39 @@ class CAS_GUI(QMainWindow):
      
     
     def create_processors(self):
-        """Subclasses should overload this to create processing threads."""
-        pass
+        """ If a processor has been defined, create an ImageProcessor thread
+        and pass the details of the processor.
+        """
+        
+        if self.processor is not None:
+        
+            # We will use the queue that the image acquisition thread has created
+            # to act as the input queue, this avoids the need for any copying of images
+            if self.imageThread is not None:
+                inputQueue = self.imageThread.get_image_queue()
+            else:
+                inputQueue = None
+           
+            # Create the processor. 
+            self.imageProcessor = ImageProcessorThread(self.processor, 10, 10, inputQueue = inputQueue, 
+                                                       multicore = self.multiCore, 
+                                                       sharedMemory = self.sharedMemory,
+                                                       sharedMemoryArraySize = self.sharedMemoryArraySize)
+            
+            # Update the processor based on initial values of widgets
+            self.processing_options_changed()
+        
+            # Start the thread
+            if self.imageProcessor is not None:
+                self.imageProcessor.start()
+                
+                
     
-    
+        
     def processing_options_changed(self):
-        """Subclasses should overload this to handle procssing changes"""
+        """Subclasses should overload this to handle processing changes"""
+        
+        
         pass
     
 
@@ -724,7 +812,7 @@ class CAS_GUI(QMainWindow):
         palette.setColor(QPalette.Disabled, QPalette.Light, Qt.black)
         palette.setColor(QPalette.Disabled, QPalette.Shadow, QColor(12, 15, 16))
         
-        QtWidgets.QApplication.setPalette(palette)       
+        
         
     
 
@@ -741,7 +829,6 @@ class CAS_GUI(QMainWindow):
         gotProcessedImage = False
         rawImage = None
         
-        
         if self.imageProcessor is not None:
             
             # If we have an image processor defined and we are doing manual image
@@ -754,7 +841,7 @@ class CAS_GUI(QMainWindow):
                     rawImage = self.imageThread.get_next_image()
                     if rawImage is not None:
                         self.imageProcessor.add_image(rawImage) 
-            
+
             # If there is a new processed image, pull it off the queue
             if self.imageProcessor.is_image_ready() is True:
                 gotProcessedImage = True
@@ -764,10 +851,9 @@ class CAS_GUI(QMainWindow):
         elif self.imageThread is not None:
             
             self.currentProcessedImage = None 
-         
-         #   if self.imageThread.is_image_ready():
-          #      rawImage  = self.imageThread.get_latest_image()
-                
+
+            if self.imageThread.is_image_ready():
+                rawImage  = self.imageThread.get_latest_image()
         
         else:
             
@@ -814,6 +900,7 @@ class CAS_GUI(QMainWindow):
                     
                     self.recordStatusLabel.setText(f"Recorded {self.numFramesRecorded} frames.")
 
+
     def update_image_display(self):
        """ Displays the current raw image. 
        Sub-classes should overload this if additional display boxes used.
@@ -821,7 +908,7 @@ class CAS_GUI(QMainWindow):
        if self.currentProcessedImage is not None:           
            self.mainDisplay.set_image(self.currentProcessedImage)           
 
-       elif self.currentImage is not None:
+       elif self.currentImage is not None and self.fallBackToRaw:
            self.mainDisplay.set_image(self.currentImage)           
        
         
@@ -950,17 +1037,22 @@ class CAS_GUI(QMainWindow):
         """
         # Take the camera source selected in the GUI
         self.camSource = self.camSources[self.camSourceCombo.currentIndex()]
-        
-        if self.camSource == 'SimulatedCamera':
+        self.camType = self.camTypes[self.camSourceCombo.currentIndex()]
+
+        if self.camType == self.SIM_TYPE:
             
             # If we are using a simulated camera, ask for a file if not hard-coded
             if self.sourceFilename is None:
-                self.sourceFilename = QFileDialog.getOpenFileName(filter  = '*.tif')[0]
+                filename = QFileDialog.getOpenFileName(filter  = '*.tif')[0]
+                if filename != "":
+                    self.sourceFilename = filename
+            if self.sourceFilename is not None:
                 
-            self.imageThread = ImageAcquisitionThread('SimulatedCamera', self.rawImageBufferSize, self.acquisitionLock, filename=self.sourceFilename)
-            #self.imageThread = ImageAcquisitionHandler('SimulatedCamera', self.rawImageBufferSize, filename=self.sourceFilename )
-            self.cam = self.imageThread.get_camera()
-            self.cam.pre_load(-1)
+                self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock, filename=self.sourceFilename)
+                #self.imageThread = ImageAcquisitionHandler('SimulatedCamera', self.rawImageBufferSize, filename=self.sourceFilename )
+                
+                self.cam = self.imageThread.get_camera()
+                self.cam.pre_load(-1)
         else:
             QApplication.setOverrideCursor(Qt.WaitCursor)
             self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock, filename=self.sourceFilename)
@@ -969,29 +1061,49 @@ class CAS_GUI(QMainWindow):
 
 
         # Sub-classes can overload create_processor to create processing threads
-        self.create_processors()    
+        if self.imageThread is not None:
+            self.create_processors()    
 
-        self.cam = self.imageThread.get_camera()
+            self.cam = self.imageThread.get_camera()
+    
+            if self.cam is not None:
+       
+                self.camOpen = True
+                #self.update_camera_ranges()
+                self.update_camera_from_GUI()
+                self.update_camera_ranges()
+                self.update_image_display()
+                
+                # Start the camera image acquirer  and the timers 
+                self.imageThread.start()       
+                self.GUITimer.start(self.GUIupdateInterval)
+                self.imageTimer.start(self.imagesUpdateInterval)
+                
+                # Flip which buttons will work
+                self.liveButton.setChecked(True)
+            else:
+                self.liveButton.setChecked(False)
 
-        if self.cam is not None:
-   
-            self.camOpen = True
-            #self.update_camera_ranges()
-            self.update_camera_from_GUI()
-            self.update_camera_ranges()
-            self.update_image_display()
-            
-            # Start the camera image acquirer  and the timers 
-            self.imageThread.start()       
-            self.GUITimer.start(self.GUIupdateInterval)
-            self.imageTimer.start(self.imagesUpdateInterval)
-            
-            # Flip which buttons will work
-            self.liveButton.setChecked(True)
-        else:
+    def pause_acquire(self):
+        if self.camOpen:
+            self.isPaused = True
             self.liveButton.setChecked(False)
+            if self.imageThread is not None:
+                self.imageThread.pause()
+            if self.imageProcessor is not None:
+                self.imageProcessor.pause()
 
-            
+
+    def resume_acquire(self):
+        if self.camOpen:
+            self.isPaused = False
+            if self.imageThread is not None:
+                self.liveButton.setChecked(True)
+                self.imageThread.resume()
+            if self.imageProcessor is not None:
+                self.imageProcessor.resume()
+        
+        
 
     def end_acquire(self):  
         """ Stops the image acquisition by stopping the image acquirer thread
@@ -1007,6 +1119,7 @@ class CAS_GUI(QMainWindow):
        # self.currentImage = np.zeros((10,10))
        
         self.filename_label.setText("")
+    
     
     def snap(self):    
         """ Saves current raw, processed and background images, if they
@@ -1119,14 +1232,15 @@ class CAS_GUI(QMainWindow):
         updates currentProcessedImage, and then refreshes displayed
         images and GUI  
         """  
-        try:
-            self.currentImage = self.cam.get_image()
-        except:
-            pass
-        if self.imageProcessor is not None and self.currentImage is not None:
-            self.currentProcessedImage = self.imageProcessor.process_frame(self.currentImage)
-        self.update_image_display()
-        self.update_GUI()
+        if self.camTypes[self.camSourceCombo.currentIndex()] == self.FILE_TYPE:
+            try:
+                self.currentImage = self.cam.get_image()
+            except:
+                pass
+            if self.imageProcessor is not None and self.currentImage is not None:
+                self.currentProcessedImage = self.imageProcessor.process_frame(self.currentImage)
+            self.update_image_display()
+            self.update_GUI()
 
     
     def exposure_slider_changed(self):
@@ -1164,8 +1278,10 @@ class CAS_GUI(QMainWindow):
         if self.camOpen:
             self.end_acquire()
         if self.imageProcessor is not None:
+
             self.imageProcessor.stop() 
         self.gui_save()
+        
         active = mp.active_children()
         for child in active:
             child.terminate()
@@ -1195,10 +1311,14 @@ class CAS_GUI(QMainWindow):
     def live_button_clicked(self):
         """ Handles press of 'Live Imaging' button.
         """
-        if self.camOpen:
-            self.end_acquire()
-        else:
-            self.start_acquire()       
+        if not self.camOpen:
+            self.start_acquire()
+            
+        elif self.camOpen and self.isPaused:
+            self.resume_acquire() 
+            
+        elif self.camOpen and not self.isPaused:
+            self.pause_acquire()       
         
 
     def settings_button_clicked(self):
@@ -1235,15 +1355,7 @@ class CAS_GUI(QMainWindow):
     def record_button_clicked(self):
         """ Handles click of record button.
         """
-        
-        #if self.recording is False:
-        #    self.start_recording()
-        #    self.recordButton.setChecked(True)
-        #else:
-        #    self.stop_recording()
-        #    self.recordButton.setChecked(False)
-
-        #self.update_GUI()
+     
         self.expanding_menu_clicked(self.recordButton, self.recordPanel)
 
     
@@ -1255,9 +1367,9 @@ class CAS_GUI(QMainWindow):
             if self.recordBuffered:
                 self.record_buffer_full()
 
-        self.update_GUI()
-        
-        
+        self.update_GUI()    
+    
+    
     def record_folder_clicked(self):
          """ Requests folder to save recordings to
          """
@@ -1271,8 +1383,6 @@ class CAS_GUI(QMainWindow):
          else:
              QMessageBox.about(self, "Error", "Invalid folder.")  
 
-        
-    
     def save_image_ac(self, img, fileName):
         """ Utility function to save 16 bit image 'img' to file 'fileName' with autoscaling """   
         if fileName:
@@ -1370,7 +1480,6 @@ class CAS_GUI(QMainWindow):
         else:
             self.recordFilename = (self.recordFolder / Path(now.strftime('record_Y_%m_%d_%H_%M_%S.avi'))).as_posix()
 
-            
         
         self.recordBuffered = self.recordBufferCheck.isChecked()
         self.recordBufferSize = self.recordBufferSpin.value()
@@ -1448,8 +1557,7 @@ class CAS_GUI(QMainWindow):
         self.numFramesBuffered = 0
         self.stop_recording()
         QApplication.restoreOverrideCursor()
-        
-        
+
         
         
     def stop_recording(self):
@@ -1462,8 +1570,6 @@ class CAS_GUI(QMainWindow):
         self.recordFolderButton.setEnabled(True)
 
 
-
-
     def im_to_vid_frame(self, imToSave):
         
         if imToSave.ndim  == 3:
@@ -1474,6 +1580,7 @@ class CAS_GUI(QMainWindow):
             outImg[:,:,1] = imToSave
             outImg[:,:,2] = imToSave
             return outImg
+        
     
     def cam_source_changed(self):
         """ Deals with user changing camera source option, including adjusting
@@ -1498,8 +1605,6 @@ class CAS_GUI(QMainWindow):
             self.camStatusPanel.show()
             self.inputFilePanel.hide()
             self.fileIdxWidget.hide()
-
-
 
     
     def gui_save(self):
@@ -1540,7 +1645,6 @@ class CAS_GUI(QMainWindow):
               name = obj.objectName()
               value = obj.isChecked()  # get stored value from registry
               self.settings.setValue(name, value)
-
 
 
     def gui_restore(self):
@@ -1604,6 +1708,7 @@ class CAS_GUI(QMainWindow):
              if value != None:
                  obj.setChecked(str2bool(value))      
 
+
 # Helper utility 
 def str2bool(v):
         return v.lower() in ("yes", "true", "t", "1")
@@ -1611,6 +1716,7 @@ def str2bool(v):
     
 # Launch the GUI
 if __name__ == '__main__':
+    
     
    app=QApplication(sys.argv)
    app.setStyle("Fusion")

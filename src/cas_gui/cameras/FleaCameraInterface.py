@@ -8,7 +8,7 @@ Mike Hughes, Applied Optics Group, University of Kent
 """
   
 
-from GenericCamera import GenericCameraInterface
+from cas_gui.cameras.GenericCamera import GenericCameraInterface
  
 import PySpin
 

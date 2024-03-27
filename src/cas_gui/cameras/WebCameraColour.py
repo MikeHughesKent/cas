@@ -9,7 +9,7 @@ import cv2 as cv
 import time
 
 import numpy as np
-from WebCamera import WebCamera  
+from cas_gui.cameras.WebCamera import WebCamera  
 
         
 class WebCameraColour(WebCamera):

@@ -3,12 +3,12 @@
 Kent-CAS-GUI Example
 
 This examples shows how to extend CAS GUI to create a simple application
-to process and display images from a camera.
+to process and display images from a camera. The processing is performed
+only a different processor.
 
 @author: Mike Hughes, Applied Optics Group, University of Kent
 
 """
-
 
 import sys 
 import os
@@ -26,7 +26,7 @@ from cas_gui.threads.image_processor_thread import ImageProcessorThread
 from cas_gui.threads.image_processor_class import ImageProcessorClass
 
 
-class Filter(ImageProcessorClass):
+class GaussianFilter(ImageProcessorClass):
     
     applyFilter = False
     filterSize = None   
@@ -59,20 +59,27 @@ class example_GUI(CAS_GUI):
     authorName = "AOG"
     appName = "Example GUI"
     
-    # GUI window title
-    windowTitle = "Kent Camera Acquisition System: Example"
+    # Path to where CAS icons etc are stored
+    resPath = "..//res"
     
-    # Define the image processor
-    processor = Filter
+    # We are going to make use of multiple cores by running the processing
+    # on a different core to the GUI and image acquirer
+    multiCore = True
+    #sharedMemory = True    # Uncomments to used shared memory instead of queue
+    
+    # Define the processor class which will be used by the ImageProcessor thread
+    # to process the images    
+    processor = GaussianFilter
+    
+    # GUI window title
+    windowTitle = "Kent Camera Acquisition System: Example with multi cores"
         
-    # Define available cameras interface and their display names in the drop-down menu
-    camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
-    camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
+    # Change to define available cameras interface and their display names in the drop-down menu
+    # camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
+    # camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
           
     # Default source for simulated camera
-    sourceFilename = Path('data/vid_example.tif')  
-
-    resPath = "..\\res"         
+    sourceFilename = Path('data/vid_example.tif')           
         
             
     def add_settings(self, settingsLayout):
@@ -91,7 +98,8 @@ class example_GUI(CAS_GUI):
         settingsLayout.addWidget(self.filterSizeInput)  
         self.filterSizeInput.valueChanged[int].connect(self.processing_options_changed)
         
-           
+  
+
 
     def processing_options_changed(self):
         """
@@ -107,12 +115,17 @@ class example_GUI(CAS_GUI):
             self.imageProcessor.get_processor().filterSize = self.filterSizeInput.value()
             self.imageProcessor.get_processor().applyFilter = self.filterCheckBox.isChecked()
 
+            
+            # If using multicore, it's essential to call update_settings once 
+            # we are done so that the settigns are sent across to the core
+            # where the processor is running
+            self.imageProcessor.update_settings()
+            
         # The new processing will be applied to the next image grabbed from a 
         # camera. However, if we are processing an image from a file, we normally
         # want to apply the new processing immediately, so we need to call
         # update_file_processing.
         self.update_file_processing()
-
         
         
 # Launch the GUI

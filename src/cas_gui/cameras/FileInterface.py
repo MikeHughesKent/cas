@@ -7,7 +7,7 @@ Mike Hughes, Applied Optics Group, University of Kent
 
 """
 
-from GenericCamera import GenericCameraInterface
+from cas_gui.cameras.GenericCamera import GenericCameraInterface
 from PIL import Image, ImageSequence
 import numpy as np
 import time

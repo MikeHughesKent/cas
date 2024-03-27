@@ -81,13 +81,15 @@ class ImageDisplay(QLabel):
    statusBrush = QBrush(Qt.white, Qt.SolidPattern)
    statusTextPen = QPen(Qt.black, 2, Qt.SolidLine)
    
+
+   graphPen = QPen(Qt.white, 1, Qt.SolidLine)
    graphCursorBrush = QBrush(Qt.white, Qt.SolidPattern)
    graphCursorPen = QPen(Qt.white, 2, Qt.SolidLine)
    graphCursorSize = 4
-   graph_label_pen = QPen(Qt.white, 2, Qt.SolidLine)
-   graph_zero_pen = QPen(Qt.white, 1, Qt.DotLine)
-   graph_display_min = None
-   graph_display_max = None
+   graphLabelPen = QPen(Qt.white, 2, Qt.SolidLine)
+   graphZeroPen = QPen(Qt.white, 1, Qt.DotLine)
+   graphDisplayMin = None
+   graphDisplayMax = None
    
    imageMode = MONO
    
@@ -137,6 +139,7 @@ class ImageDisplay(QLabel):
        if self.pmap is not None:
            
            self.mouseX, self.mouseY = self.image_coords(event.x(), event.y()) 
+
 
            if self.panning and self.is_mouse_on_image():
             
@@ -192,10 +195,9 @@ class ImageDisplay(QLabel):
        if self.imageMode == self.GRAPH:
            self.zoomLevel = 0
            return
-       
+
        if self.isZoomEnabled and self.mouseX:
            self.zoomLocation = (self.mouseX, self.mouseY)           
-           event.angleDelta().y()
            self.zoomLevel = self.zoomLevel + round(event.angleDelta().y() / 120) / self.zoomStepDivider
            self.zoomLevel = max(self.zoomLevel, 0)
            self.set_image(self.currentImage)
@@ -276,6 +278,11 @@ class ImageDisplay(QLabel):
             
            img = img.astype('uint8')
            
+           
+           #if self.fixedView:
+           #    self.getView(img)
+               
+           #else:    
            self.displayImage = self.zoom(img)          
             
            self.image = QtGui.QImage(self.displayImage.copy(), self.displayImage.shape[1], self.displayImage.shape[0], self.displayImage.shape[1], QtGui.QImage.Format_Indexed8)
@@ -359,17 +366,21 @@ class ImageDisplay(QLabel):
             # If we showing at least four pixels, calculate zoom
             if max(np.round(shape / (2**self.zoomLevel))) < 4:
                 self.zoomLevel = round( np.log2(max(shape)/4) * self.zoomStepDivider  ) / self.zoomStepDivider
+            
             zoomShape = np.round(shape / (2**self.zoomLevel))
             
-            aspectRatio = self.geometry().width() / self.geometry().height()      
+            imageAspectRatio = np.shape(img)[1]/np.shape(img)[0]
+            aspectRatio = self.geometry().width() / self.geometry().height() 
             
-            if aspectRatio > 1:
+            
+            if imageAspectRatio > aspectRatio:
                 self.displayW = int(zoomShape[1]) 
-                self.displayH =  round(zoomShape[1] / aspectRatio  )
+                self.displayH =  min(shape[0], int(round(self.displayW / aspectRatio)))
+     
             else:
                 self.displayH = int(zoomShape[0]) 
-                self.displayW = round(zoomShape[0] * aspectRatio  ) 
-           
+                self.displayW = min(shape[1], int(round(self.displayH * aspectRatio))) 
+
             # Sets the current view position within the image based on the zoom
             # level and our scrolling position
             if self.zoomLocation is not None:
@@ -499,6 +510,20 @@ class ImageDisplay(QLabel):
                plotX = np.linspace(0, self.graph_width, num_points)
                plotY = self.graph_height - (self.graphData - graphMin) / ( graphMax - graphMin) * self.graph_height
     
+               if self.graphDisplayMin is None:
+                   graphMin = min_val
+               else:
+                   graphMin = self.graphDisplayMin
+               
+               if self.graphDisplayMax is None:
+                   graphMax = max_val
+               else:
+                   graphMax = self.graphDisplayMax
+               plotX = np.linspace(0, self.graph_width, num_points)
+               plotY = self.graph_height - (self.graphData - graphMin) / ( graphMax - graphMin) * self.graph_height
+              
+               painter.setPen(self.graphPen)
+
                for i in range(num_points - 1):
                
                    x,y = self.screen_coords(plotX[i],plotY[i])
@@ -507,7 +532,8 @@ class ImageDisplay(QLabel):
                    
            font = painter.font()
            fm = QFontMetrics(font)        
-           painter.setPen(self.graph_label_pen)
+
+           painter.setPen(self.graphLabelPen)
            prec = 3
            
            
@@ -524,15 +550,13 @@ class ImageDisplay(QLabel):
            
            # Zero Line
            if graphMax > 0 and graphMin < 0:
-               painter.setPen(self.graph_zero_pen)
+
+               painter.setPen(self.graphZeroPen)
 
                x,y = self.screen_coords(0, self.graph_height - (0 - graphMin) / ( graphMax - graphMin) * self.graph_height)
                painter.drawLine(x,y,x + 100000,y) 
                
-           
-           
-           
-           #painter.drawLine(x,y, x,y+1000) 
+  
 
             
        #################### Draw overlays
@@ -597,11 +621,18 @@ class ImageDisplay(QLabel):
        if self.zoomLevel > 0 and self.isZoomIndicator:
 
            painter.setPen(self.zoomIndicatorPen)
-           x = self.width() - (self.width() - self.pmap.width()) / 2 - self.zoomIndicatorOffsetX - self.zoomIndicatorWidth
-           y = (self.height() - self.pmap.height()) / 2 + self.zoomIndicatorOffsetY
-           w = self.zoomIndicatorWidth
-           h = self.imageSize[0] / self.imageSize[1] * w
            
+           if self.imageHeight < self.imageWidth:
+               x = self.width() - (self.width() - self.pmap.width()) / 2 - self.zoomIndicatorOffsetX - self.zoomIndicatorWidth
+               y = (self.height() - self.pmap.height()) / 2 + self.zoomIndicatorOffsetY
+               w = self.zoomIndicatorWidth
+               h = self.imageSize[0] / self.imageSize[1] * w
+           else:
+               x = self.width() - (self.width() - self.pmap.width()) / 2 - self.zoomIndicatorOffsetX 
+               y = (self.height() - self.pmap.height()) / 2 + self.zoomIndicatorOffsetY
+               h = self.zoomIndicatorWidth
+               w = self.imageSize[1] / self.imageSize[0] * h
+               
            # Outer rect
            painter.drawRect(int(x), int(y), int(w), int(h)) 
            

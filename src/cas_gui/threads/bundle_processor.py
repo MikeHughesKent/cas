@@ -2,7 +2,7 @@
 """
 Kent-CAS: Camera Acquisition System
 
-Threading class for image processing of fibre bundle images. 
+Class for image processing of fibre bundle images. 
 
 @author: Mike Hughes
 Applied Optics Group
@@ -11,16 +11,25 @@ University of Kent
 """
 
 import sys
-sys.path.append('C:\\Users\\AOG\\Dropbox\\Programming\\Python\\pybundle')
+import os
+
+file_dir = os.path.dirname(__file__)
+sys.path.insert(0, os.path.abspath(os.path.join(file_dir, '../../../../pyfibrebundle/src')))
+
+
 import logging
 import time
-from ImageProcessorThread import ImageProcessorThread
-from pybundle import PyBundle
-from pybundle import Mosaic
+
 import pybundle
 import numpy as np
 
-class BundleProcessor(ImageProcessorThread):
+
+from pybundle import PyBundle
+from pybundle import Mosaic
+
+from cas_gui.threads.image_processor_class import ImageProcessorClass
+
+class BundleProcessor(ImageProcessorClass):
     
     method = None
     mask = None
@@ -30,18 +39,18 @@ class BundleProcessor(ImageProcessorThread):
     dualMode = False
     previousImage = None
     
-    def __init__(self, inBufferSize, outBufferSize, **kwargs):
+    def __init__(self, **kwargs):
         
         self.mosaicing = kwargs.get('mosaic', False)
         
-        super().__init__(inBufferSize, outBufferSize, **kwargs)
+        super().__init__()
         
         self.pyb = PyBundle()
         if self.mosaicing is True:
             self.mosaic = Mosaic(1000, resize = 200, boundaryMethod = Mosaic.SCROLL)
 
                 
-    def process_frame(self, inputFrame):
+    def process(self, inputFrame):
         #print("Processing frame")
         outputFrame = inputFrame
 
@@ -71,8 +80,6 @@ class BundleProcessor(ImageProcessorThread):
     
         return outputFrame
 
-    def update_settings(self):
-        pass
 
     def get_mosaic(self):
         if self.mosaicing: 
