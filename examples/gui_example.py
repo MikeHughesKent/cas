@@ -9,20 +9,45 @@ to process and display images from a camera.
 
 """
 
+
 import sys 
 import os
 from pathlib import Path
+
 from PyQt5 import QtGui, QtCore, QtWidgets  
 from PyQt5.QtWidgets import *
 
+from scipy.ndimage import gaussian_filter
+
 import context    # Adds paths
 
-from CAS_GUI_Base import *
-from ImageAcquisitionThread import ImageAcquisitionThread
-from image_display import ImageDisplay
-from ImageProcessor import ImageProcessor
+from cas_gui.base import CAS_GUI
+from cas_gui.threads.image_processor_thread import ImageProcessorThread
+from cas_gui.threads.image_processor_class import ImageProcessorClass
 
-from gui_example_filter_class import FilterClass
+
+class Filter(ImageProcessorClass):
+    
+    applyFilter = False
+    filterSize = None   
+    
+    def __init__(self, applyFilter = False, filterSize = None):
+        """ Technically not needed since we are not adding anything, but
+        if any additional initialisation is needed, it goes here.
+        """
+        self.applyFilter = applyFilter
+        self.filterSize = filterSize
+        
+                
+    def process(self, inputFrame):
+        """ This is where we do the processing.
+        """
+        if self.applyFilter and self.filterSize > 0:
+            outputFrame = gaussian_filter(inputFrame, self.filterSize)
+        else:
+            outputFrame = inputFrame
+        return outputFrame
+    
 
 
 class example_GUI(CAS_GUI):
@@ -38,14 +63,16 @@ class example_GUI(CAS_GUI):
     windowTitle = "Kent Camera Acquisition System: Example"
     
     # Define the image processor
-    processor = FilterClass
+    processor = Filter
         
     # Define available cameras interface and their display names in the drop-down menu
     camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
     camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
           
     # Default source for simulated camera
-    sourceFilename = Path('data/vid_example.tif')           
+    sourceFilename = Path('data/vid_example.tif')  
+
+    resPath = "..\\res"         
         
             
     def add_settings(self, settingsLayout):
@@ -64,10 +91,9 @@ class example_GUI(CAS_GUI):
         settingsLayout.addWidget(self.filterSizeInput)  
         self.filterSizeInput.valueChanged[int].connect(self.processing_options_changed)
         
-        
-    
+           
 
-    def processing_options_changed(self,event):
+    def processing_options_changed(self):
         """
         This function is called when the processing options are changed so
         that we can update the processor. Here we are just changing attributes
@@ -86,6 +112,7 @@ class example_GUI(CAS_GUI):
         # want to apply the new processing immediately, so we need to call
         # update_file_processing.
         self.update_file_processing()
+
         
         
 # Launch the GUI

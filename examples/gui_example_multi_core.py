@@ -3,7 +3,8 @@
 Kent-CAS-GUI Example
 
 This examples shows how to extend CAS GUI to create a simple application
-to process and display images from a camera.
+to process and display images from a camera. The processing is performed
+only a different processor.
 
 @author: Mike Hughes, Applied Optics Group, University of Kent
 
@@ -12,20 +13,41 @@ to process and display images from a camera.
 import sys 
 import os
 from pathlib import Path
+
 from PyQt5 import QtGui, QtCore, QtWidgets  
 from PyQt5.QtWidgets import *
 
+from scipy.ndimage import gaussian_filter
+
 import context    # Adds paths
 
-from CAS_GUI_Base import *
-from gui_example_processor import FilterProcessor
-from ImageAcquisitionThread import ImageAcquisitionThread
-from ImageProcessorThread import ImageProcessorThread
-
-from image_display import ImageDisplay
-from gui_example_filter_class import FilterClass
+from cas_gui.base import CAS_GUI
+from cas_gui.threads.image_processor_thread import ImageProcessorThread
+from cas_gui.threads.image_processor_class import ImageProcessorClass
 
 
+class GaussianFilter(ImageProcessorClass):
+    
+    applyFilter = False
+    filterSize = None   
+    
+    def __init__(self, applyFilter = False, filterSize = None):
+        """ Technically not needed since we are not adding anything, but
+        if any additional initialisation is needed, it goes here.
+        """
+        self.applyFilter = applyFilter
+        self.filterSize = filterSize
+        
+                
+    def process(self, inputFrame):
+        """ This is where we do the processing.
+        """
+        if self.applyFilter and self.filterSize > 0:
+            outputFrame = gaussian_filter(inputFrame, self.filterSize)
+        else:
+            outputFrame = inputFrame
+        return outputFrame
+    
 
 
 class example_GUI(CAS_GUI):
@@ -37,20 +59,24 @@ class example_GUI(CAS_GUI):
     authorName = "AOG"
     appName = "Example GUI"
     
+    # Path to where CAS icons etc are stored
+    resPath = "..//res"
+    
     # We are going to make use of multiple cores by running the processing
     # on a different core to the GUI and image acquirer
-    multicore = True
+    multiCore = True
+    #sharedMemory = True    # Uncomments to used shared memory instead of queue
     
     # Define the processor class which will be used by the ImageProcessor thread
     # to process the images    
-    processor = FilterClass
+    processor = GaussianFilter
     
     # GUI window title
     windowTitle = "Kent Camera Acquisition System: Example with multi cores"
         
-    # Define available cameras interface and their display names in the drop-down menu
-    camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
-    camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
+    # Change to define available cameras interface and their display names in the drop-down menu
+    # camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
+    # camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
           
     # Default source for simulated camera
     sourceFilename = Path('data/vid_example.tif')           
@@ -75,7 +101,7 @@ class example_GUI(CAS_GUI):
   
 
 
-    def processing_options_changed(self,event):
+    def processing_options_changed(self):
         """
         This function is called when the processing options are changed so
         that we can update the processor. Here we are just changing attributes
