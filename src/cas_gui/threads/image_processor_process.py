@@ -43,11 +43,10 @@ class ImageProcessorProcess(multiprocessing.Process):
     sharedMemoryArray = None
     sharedMemorySize = 0
     sharedMemory = None
-
+    imSize = (0,0)
     
     def __init__(self, inQueue, outQueue, updateQueue, messageQueue, useSharedMemory = False, sharedMemoryArraySize = (500,10000)):
         
-        print("creating procss")
         super().__init__()  
         
                       
@@ -65,12 +64,13 @@ class ImageProcessorProcess(multiprocessing.Process):
         self.currentFrameNumber = 0
         self.isPaused = False
         self.isStarted = True,
-     
-    
+   
+        
     def run(self):                
 
         while True:
             
+           
             # Receive an updated instance of the processor object
             if self.updateQueue.qsize() > 0:
                 self.processor = self.updateQueue.get()
@@ -78,18 +78,16 @@ class ImageProcessorProcess(multiprocessing.Process):
             if self.processor is not None:            
                  
                 # Receive messages to call methods of the processor instance    
-                if self.messageQueue.qsize() > 0:
+                while self.messageQueue.qsize() > 0:
                     message, parameter = self.messageQueue.get()                 
                     self.processor.message(message,parameter)
                
                 # We attempt to pull an image of the queue
                 try:
                     im = self.inputQueue.get_nowait()
-                    #print("Proc got im")
                 except:
                     im = None
-                    time.sleep(0.01)
-                    #print("Proc no im")
+                    time.sleep(0.001)
 
                     
                     
@@ -99,7 +97,7 @@ class ImageProcessorProcess(multiprocessing.Process):
                     
                     if not self.useSharedMemory:                   
                         
-                        # If the output queue is full we removed an item to make space
+                        # If the output queue is full we remove an item to make space
                         if self.outputQueue.full():
                             temp = self.outputQueue.get()
                             
@@ -115,19 +113,29 @@ class ImageProcessorProcess(multiprocessing.Process):
 
                                 temp = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32')
                                 self.sharedMemory = multiprocessing.shared_memory.SharedMemory(create=True, size=temp.nbytes, name = "CASShare")
-                                print("creating shared memory")
                                 self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)
                                 self.sharedMemorySize = outImage.nbytes
+                                
            
                             # The output from the processor is copied into the top left corner of the array in shared memory
-                            self.sharedMemoryArray[:np.shape(outImage)[0], :np.shape(outImage)[1]] = outImage
                             
-                            # If the output queue is full we removed an item to make space
+                            self.sharedMemoryArray[1: 1 + np.shape(outImage)[0], :np.shape(outImage)[1]] = outImage
+                                                        
+                            # If the image size has changed, we need to send the image size in the queue so
+                            # the receiver knows the size image to pull from shared memory.
+                           # if np.shape(outImage)[0] != self.imSize[0] or np.shape(outImage)[1] != self.imSize[1]:
+                                
+                            self.imSize = np.shape(outImage)
+                            
+                            self.sharedMemoryArray[0,0] = self.imSize[0]
+                            self.sharedMemoryArray[0,1] = self.imSize[1]
+                            
+                            # If the output queue is full we remove an item to make space
                             if self.outputQueue.full():
-                                temp = self.outputQueue.get()
-
+                                 temp = self.outputQueue.get()
+    
                             # Put a tuple in the output queue that tells receiver the image size                            
-                            self.outputQueue.put(np.shape(outImage))
+                            self.outputQueue.put(self.imSize)
                             
 
                     

@@ -88,18 +88,19 @@ class CAS_GUI(QMainWindow):
     optionsPanelSize = 300
     
     # Timer interval defualts (ms)
-    GUIupdateInterval = 50
-    imagesUpdateInterval = 5
+    GUIupdateInterval = 100
+    imagesUpdateInterval = 10
     
     processor = None
       
     # Defaults
+    isPaused = False
     currentImage = None
     camOpen = False
     backgroundImage = None
     imageProcessor = None
     currentProcessedImage = None
-    manualImageTransfer = False
+    manualImageTransfer = True
     recording = False
     videoOut = None
     numFramesRecorded  = 0
@@ -138,8 +139,7 @@ class CAS_GUI(QMainWindow):
         file = os.path.join(self.resPath, 'cas_modern.css')
         with open(file,"r") as fh:
             self.setStyleSheet(fh.read())
-        self.set_colour_scheme()
-            
+        self.set_colour_scheme()            
         
         # Creates timers for GUI and camera acquisition
         self.create_timers()         
@@ -152,11 +152,7 @@ class CAS_GUI(QMainWindow):
         # Load last values for GUI from registry
         self.settings = QtCore.QSettings(self.authorName, self.appName)  
         self.gui_restore()
-        
-        
-       
-
-    
+            
         # Put the window in a sensible position
         self.resize(1200,800)
         frameGm = self.frameGeometry()
@@ -164,8 +160,7 @@ class CAS_GUI(QMainWindow):
         centerPoint = QtWidgets.QApplication.desktop().screenGeometry(screen).center()
         frameGm.moveCenter(centerPoint)
         self.move(frameGm.topLeft())        
-        
-        
+                
         # Make sure the display is correct for whatever camera source 
         # we initiallylly have selected
         self.cam_source_changed()
@@ -760,14 +755,18 @@ class CAS_GUI(QMainWindow):
         
         if self.processor is not None:
         
-            # We will use the queue that the image acquisition thread has created
-            # to act as the input queue, this avoids the need for any copying of images
-            if self.imageThread is not None:
+            # If manualImageTransfer is off We will use the queue that the image 
+            # acquisition thread has created to act as the input queue, this 
+            # avoids the need for any copying of images. However, we will then
+            # no longer have access to the raw images since we can't pull them off
+            # the queue without competing with the image processor, so for 
+            # example we can't make a proper raw recording.
+            if self.imageThread is not None and self.manualImageTransfer is False:
                 inputQueue = self.imageThread.get_image_queue()
             else:
                 inputQueue = None
            
-            # Create the processor. 
+            # Create the processor
             self.imageProcessor = ImageProcessorThread(self.processor, 10, 10, inputQueue = inputQueue, 
                                                        multicore = self.multiCore, 
                                                        sharedMemory = self.sharedMemory,
@@ -779,14 +778,12 @@ class CAS_GUI(QMainWindow):
             # Start the thread
             if self.imageProcessor is not None:
                 self.imageProcessor.start()
-                
-                
+                                
     
         
     def processing_options_changed(self):
         """Subclasses should overload this to handle processing changes"""
-        
-        
+               
         pass
     
 
@@ -839,8 +836,12 @@ class CAS_GUI(QMainWindow):
             if self.imageProcessor is not None and self.manualImageTransfer is True:
                 if self.imageThread.is_image_ready():
                     rawImage = self.imageThread.get_next_image()
+                    self.currentImage = rawImage
+                    
                     if rawImage is not None:
-                        self.imageProcessor.add_image(rawImage) 
+                        self.imageProcessor.add_image(rawImage)
+                        gotRawImage = True
+
 
             # If there is a new processed image, pull it off the queue
             if self.imageProcessor.is_image_ready() is True:
@@ -859,17 +860,7 @@ class CAS_GUI(QMainWindow):
             
             self.currentProcessedImage = None 
 
-        
-        # If there is a raw image ready, pull it off
-        if self.imageThread is not None:
-
-            if self.imageThread.is_image_ready():
-                rawImage  = self.imageThread.get_next_image()
-                if rawImage is not None:
-                    gotRawImage = True
-                    self.currentImage = rawImage        
-        
-        
+             
         if self.recording and self.videoOut is not None:
             
             if self.recordRaw is False and self.currentProcessedImage is not None and gotProcessedImage:
@@ -906,7 +897,7 @@ class CAS_GUI(QMainWindow):
        Sub-classes should overload this if additional display boxes used.
        """
        if self.currentProcessedImage is not None:           
-           self.mainDisplay.set_image(self.currentProcessedImage)           
+           self.mainDisplay.set_image(self.currentProcessedImage) 
 
        elif self.currentImage is not None and self.fallBackToRaw:
            self.mainDisplay.set_image(self.currentImage)           
@@ -1046,22 +1037,22 @@ class CAS_GUI(QMainWindow):
                 filename = QFileDialog.getOpenFileName(filter  = '*.tif')[0]
                 if filename != "":
                     self.sourceFilename = filename
+
             if self.sourceFilename is not None:
-                
-                self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock, filename=self.sourceFilename)
-                #self.imageThread = ImageAcquisitionHandler('SimulatedCamera', self.rawImageBufferSize, filename=self.sourceFilename )
-                
+
+                self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock, filename=self.sourceFilename)                                                  
                 self.cam = self.imageThread.get_camera()
                 self.cam.pre_load(-1)
         else:
             QApplication.setOverrideCursor(Qt.WaitCursor)
-            self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock, filename=self.sourceFilename)
+            self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock)
             QApplication.restoreOverrideCursor()
             
 
 
         # Sub-classes can overload create_processor to create processing threads
         if self.imageThread is not None:
+            
             self.create_processors()    
 
             self.cam = self.imageThread.get_camera()

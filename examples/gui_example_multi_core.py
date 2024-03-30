@@ -22,7 +22,6 @@ from scipy.ndimage import gaussian_filter
 import context    # Adds paths
 
 from cas_gui.base import CAS_GUI
-from cas_gui.threads.image_processor_thread import ImageProcessorThread
 from cas_gui.threads.image_processor_class import ImageProcessorClass
 
 
@@ -65,7 +64,7 @@ class example_GUI(CAS_GUI):
     # We are going to make use of multiple cores by running the processing
     # on a different core to the GUI and image acquirer
     multiCore = True
-    #sharedMemory = True    # Uncomments to used shared memory instead of queue
+    sharedMemory = True    # Comment to use queue
     
     # Define the processor class which will be used by the ImageProcessor thread
     # to process the images    

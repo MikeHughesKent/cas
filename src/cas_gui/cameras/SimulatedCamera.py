@@ -42,8 +42,8 @@ class SimulatedCamera(GenericCameraInterface):
         return "Simulated Camera, source = " + self.filename  
      
         
-    def open_camera(self, camID):        
-        self.imStream = Image.open(self.filename)
+    def open_camera(self, camID):  
+        self.dataset = Image.open(self.filename)
                
                 
     def close_camera(self):

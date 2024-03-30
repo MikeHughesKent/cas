@@ -27,6 +27,8 @@ class ImageProcessorThread(threading.Thread):
     process = None
     updateQueue = None
     sharedMemory = None
+    inputSharedMemory = None
+    imSize = (0,0)
     
     def __init__(self, processor, inBufferSize, outBufferSize, **kwargs):
         
@@ -77,7 +79,7 @@ class ImageProcessorThread(threading.Thread):
                                                  useSharedMemory = self.useSharedMemory)
             self.process.start()
             self.updateQueue.put(self.processor)
-            
+           
         
     
         
@@ -88,11 +90,11 @@ class ImageProcessorThread(threading.Thread):
          # If we are doing multicore, we do nothing here because we should already
          # have the processor running on another core
          if self.multicore:
-             time.sleep(0.1)
+                               
+             time.sleep(0.01)
          
          else:    
-             while self.isStarted:
-                 
+             while self.isStarted:                 
                  
                  if not self.isPaused:
                      
@@ -181,6 +183,15 @@ class ImageProcessorThread(threading.Thread):
         
     
     def is_image_ready(self):
+        
+        # If we are using shared memory then the image is always ready,
+        # we just copy from the shared memory at whatever update rate we want.
+        
+        # Otherwise, if using queues, we need to check if there is something
+        # in the queue
+        
+       # if self.useSharedMemory is True:
+        #    return True
         if self.get_num_images_in_output_queue() > 0:
             return True
         else:
@@ -192,38 +203,52 @@ class ImageProcessorThread(threading.Thread):
 
         if self.inputQueue.full():
             temp = self.inputQueue.get()
-            t1 = time.time()
         self.inputQueue.put_nowait(im)
-        #print("Image added at", time.perf_counter())
     
     
     
     def get_next_image(self):
         
-        if self.is_image_ready() is True:
-            try:
-                im = self.outputQueue.get()
-                
-                if self.useSharedMemory:
-                    # If using shared memory, the im returned is a tuple giving the size of the image. The actual
-                    # image is in the shared memory
-                    imSize = im
-                    #print("Taking image from buffer")
-                    if self.sharedMemory is None:
-                        self.sharedMemory = multiprocessing.shared_memory.SharedMemory(name="CASShare")
-                        self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)  
-                    im = self.sharedMemoryArray[:imSize[0], :imSize[1]]
-                    #im = np.zeros((10,10))
-                    #print(im[30,30])
-                    #im2 = im[:imSize[0],:imSize[1]]
-                    im = np.copy(im)
+        # If we are using shared memory, check if there is anything in the queue
+        # With shared memory, the queue just tells us the image size
+        if self.useSharedMemory:
+            
+            if self.outputQueue.qsize() > 0:
+                try:
+                    self.imSize = self.outputQueue.get_nowait()
+                except:
+                    return None
 
-            except queue.Empty:
-                return None
+
+        if self.useSharedMemory: 
+            
+           # Check we have been given a non-zero image size, the is initialised
+           # to (0,0) so this will also stop us trying to read from shared memory
+           # before it has been created
+           if (self.imSize[0] > 0 or self.imSize[1] > 0):       
+               
+               # If we have not yet got a reference to the shared memory, get it now
+               if self.sharedMemory is None:
+                     self.sharedMemory = multiprocessing.shared_memory.SharedMemory(name="CASShare")
+                     self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)  
+              
+               imW = int(self.sharedMemoryArray[0,1])
+               imH = int(self.sharedMemoryArray[0,0])
+
+               # Pull the image from shared memory
+               im = self.sharedMemoryArray[1:1+imH, :imW]
+           
+           else:
+               im = None
+       
+        # Otherwise, if we are using queues:
         else:
-            return None
-        
-        
+            
+            if self.is_image_ready() is True:   
+                try:
+                    im = self.outputQueue.get_nowait()   
+                except:
+                    im = None
         
         return im
             

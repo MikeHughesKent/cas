@@ -498,18 +498,6 @@ class ImageDisplay(QLabel):
                max_val = np.max(self.graphData)
                min_val = np.min(self.graphData)
                
-               if self.graph_display_min is None:
-                   graphMin = min_val
-               else:
-                   graphMin = self.graph_display_min
-               
-               if self.graph_display_max is None:
-                   graphMax = max_val
-               else:
-                   graphMax = self.graph_display_max
-               plotX = np.linspace(0, self.graph_width, num_points)
-               plotY = self.graph_height - (self.graphData - graphMin) / ( graphMax - graphMin) * self.graph_height
-    
                if self.graphDisplayMin is None:
                    graphMin = min_val
                else:
@@ -518,7 +506,7 @@ class ImageDisplay(QLabel):
                if self.graphDisplayMax is None:
                    graphMax = max_val
                else:
-                   graphMax = self.graphDisplayMax
+                   graphMax = self.graphDisplayMax#
                plotX = np.linspace(0, self.graph_width, num_points)
                plotY = self.graph_height - (self.graphData - graphMin) / ( graphMax - graphMin) * self.graph_height
               
