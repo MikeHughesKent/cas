@@ -64,7 +64,6 @@ class example_GUI(CAS_GUI):
     # We are going to make use of multiple cores by running the processing
     # on a different core to the GUI and image acquirer
     multiCore = True
-    sharedMemory = True    # Comment to use queue
     
     # Define the processor class which will be used by the ImageProcessor thread
     # to process the images    

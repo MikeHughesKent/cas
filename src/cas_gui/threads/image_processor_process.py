@@ -5,7 +5,7 @@ ImageProcessorProcess
 Part of Kent CAS-GUI: Camera Acquisition System GUI
 
 Class to assist with real-time image processing in a dedicated process (i.e. 
-for multiprocessor applications). At initialisation, three multiprocessing
+for multiprocessor applications). At initialisation, four multiprocessing
 queues must be provided. 
     
     inQueue  - Provides images to be processed
@@ -40,15 +40,16 @@ class ImageProcessorProcess(multiprocessing.Process):
     processor = None
     currentFrameNumber = 0
     lastFrameTime = 0
+    frameStepTime = 0
     sharedMemoryArray = None
     sharedMemorySize = 0
     sharedMemory = None
     imSize = (0,0)
+    imCounter = 0
     
     def __init__(self, inQueue, outQueue, updateQueue, messageQueue, useSharedMemory = False, sharedMemoryArraySize = (500,10000)):
         
-        super().__init__()  
-        
+        super().__init__()          
                       
         self.updateQueue = updateQueue
         self.inputQueue = inQueue
@@ -63,33 +64,51 @@ class ImageProcessorProcess(multiprocessing.Process):
         self.currentFrame = None
         self.currentFrameNumber = 0
         self.isPaused = False
-        self.isStarted = True,
+        self.isStarted = True
+        self.imCounter = 0
+        self.batchProcessNum = 1
    
         
     def run(self):                
 
         while True:
             
-           
-            # Receive an updated instance of the processor object
+                       
+            # Receive an updated instance of the processor object            
             if self.updateQueue.qsize() > 0:
                 self.processor = self.updateQueue.get()
+            
             
             if self.processor is not None:            
                  
                 # Receive messages to call methods of the processor instance    
                 while self.messageQueue.qsize() > 0:
-                    message, parameter = self.messageQueue.get()                 
-                    self.processor.message(message,parameter)
+                    message, parameter = self.messageQueue.get()  
+                    if message == "set_batch_process_num":
+                        self.set_batch_process_num(parameter)
+                    else:    
+                        self.processor.message(message, parameter)
                
-                # We attempt to pull an image of the queue
-                try:
-                    im = self.inputQueue.get_nowait()
-                except:
-                    im = None
-                    time.sleep(0.001)
+                # We attempt to pull an image off the queue
+                
+                if self.get_num_images_in_input_queue() >= self.batchProcessNum:
 
-                    
+                    try:
+                        if self.batchProcessNum > 1:
+                            img = self.inputQueue.get_nowait()
+                            im = np.zeros((np.shape(img)[0], np.shape(img)[1], self.batchProcessNum))
+                            im[:,:,0] = img
+                            for i in range(1, self.batchProcessNum):
+                                im[:,:,i] = self.inputQueue.get()
+                         
+                        else:
+                            im = self.inputQueue.get_nowait()
+    
+                    except:
+                        im = None
+                        #time.sleep(0.001)
+                else:
+                    im = None
                     
                 if im is not None:  
     
@@ -112,31 +131,28 @@ class ImageProcessorProcess(multiprocessing.Process):
                             if self.sharedMemory is None:
 
                                 temp = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32')
-                                self.sharedMemory = multiprocessing.shared_memory.SharedMemory(create=True, size=temp.nbytes, name = "CASShare")
+                                try:
+                                    self.sharedMemory = multiprocessing.shared_memory.SharedMemory(create=True, size=temp.nbytes, name = "CASShare")
+                                except:
+                                    self.sharedMemory = multiprocessing.shared_memory.SharedMemory(size=temp.nbytes, name = "CASShare")
+
                                 self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)
                                 self.sharedMemorySize = outImage.nbytes
                                 
            
                             # The output from the processor is copied into the top left corner of the array in shared memory
-                            
                             self.sharedMemoryArray[1: 1 + np.shape(outImage)[0], :np.shape(outImage)[1]] = outImage
-                                                        
-                            # If the image size has changed, we need to send the image size in the queue so
-                            # the receiver knows the size image to pull from shared memory.
-                           # if np.shape(outImage)[0] != self.imSize[0] or np.shape(outImage)[1] != self.imSize[1]:
-                                
-                            self.imSize = np.shape(outImage)
                             
+                            # Store the image size in the shared memory so that receiver know which parts
+                            # of memory to use
+                            self.imSize = np.shape(outImage)
                             self.sharedMemoryArray[0,0] = self.imSize[0]
                             self.sharedMemoryArray[0,1] = self.imSize[1]
-                            
-                            # If the output queue is full we remove an item to make space
-                            if self.outputQueue.full():
-                                 temp = self.outputQueue.get()
-    
-                            # Put a tuple in the output queue that tells receiver the image size                            
-                            self.outputQueue.put(self.imSize)
-                            
+                            self.sharedMemoryArray[0,2] = self.frameStepTime
+
+                            self.imCounter = self.imCounter + 1
+                            self.sharedMemoryArray[0,3] = self.imCounter
+                            self.imCounter = self.imCounter + 1
 
                     
                     # Timing
@@ -145,4 +161,10 @@ class ImageProcessorProcess(multiprocessing.Process):
                     self.frameStepTime = self.currentFrameTime - self.lastFrameTime
                     self.lastFrameTime = self.currentFrameTime
                     
- 
+    def get_num_images_in_input_queue(self):
+         return self.inputQueue.qsize()
+      
+    def set_batch_process_num(self, num):
+        """ Sets the size of the batch of images to be sent to the processor.
+        """
+        self.batchProcessNum = num    

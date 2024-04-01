@@ -29,6 +29,7 @@ class ImageAcquisitionThread(threading.Thread):
         try:
             moduleName = "cas_gui.cameras." + camName
             camModule = importlib.import_module(moduleName)
+            print(camModule)
 
             self.cam = getattr(camModule, camName)(**camArgs)
         except:    
@@ -47,7 +48,7 @@ class ImageAcquisitionThread(threading.Thread):
         
         self.bufferSize = bufferSize
                 
-        self.imageQueue = multiprocessing.Queue(maxsize=self.bufferSize)
+        self.imageQueue = queue.Queue(maxsize=self.bufferSize)
         
         self.lastFrameTime = 0
         self.frameStepTime = 0

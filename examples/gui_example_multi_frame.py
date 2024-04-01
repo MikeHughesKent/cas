@@ -60,6 +60,8 @@ class example_multi_GUI(CAS_GUI):
     
     # Path to resources
     resPath = "..//res"
+    
+    multiCore = True
 
     # GUI window title
     windowTitle = "Kent Camera Acquisition System: Multi Frame Example"
@@ -111,6 +113,8 @@ class example_multi_GUI(CAS_GUI):
             # The image acquisition thread removes frames from the queue when it is
             # full. We can set the option here of how many to remove so
             # that we don't remove part of some sequence of frames
+        
+        if self.imageThread is not None:
             self.imageThread.set_num_removal_when_full(self.numAverageInput.value())
             
 

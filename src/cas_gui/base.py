@@ -110,7 +110,7 @@ class CAS_GUI(QMainWindow):
     rawImage = None
     fallBackToRaw = True
     multiCore = False
-    sharedMemory = False
+    sharedMemory = True
     sharedMemoryArraySize = (1024,1024)
     settings = {}  
     panelsList = []
@@ -118,7 +118,7 @@ class CAS_GUI(QMainWindow):
     defaultBackgroundFile = "background.tif"
     backgroundSource = ""
     recordBuffer = []
-
+    sourceFilename = r"C:\Users\mrh40\Dropbox\Programming\Python\cas\tests\test_data\stack_10.tif"
     TIF = 0
     AVI = 1    
    
@@ -167,7 +167,7 @@ class CAS_GUI(QMainWindow):
         self.show()
         self.recordFolderLabel.setText(self.recordFolder)
 
-
+        self.create_processors()
         
         
     def apply_default_settings(self):
@@ -430,7 +430,6 @@ class CAS_GUI(QMainWindow):
         """
         
         panel, self.recordLayout = self.panel_helper(title = "Record")
-        
          
         self.recordRawCheck = QCheckBox("Record Raw")
         self.recordLayout.addWidget(self.recordRawCheck)
@@ -447,13 +446,10 @@ class CAS_GUI(QMainWindow):
         self.recordBufferSpin.setMaximum(1000)
         
         self.recordLayout.addItem(QSpacerItem(60, 60, QSizePolicy.Minimum, QSizePolicy.Minimum))
-
-                
         
         self.recordFolderButton = QPushButton("Choose Folder")
         self.recordFolderButton.clicked.connect(self.record_folder_clicked)
         self.recordLayout.addWidget(self.recordFolderButton) 
-        
        
         self.recordFolderLabel = QLabel()
         self.recordFolderLabel.setWordWrap(True)
@@ -462,8 +458,7 @@ class CAS_GUI(QMainWindow):
         self.recordLayout.addWidget(self.recordFolderLabel)
         
         self.recordLayout.addItem(QSpacerItem(60, 60, QSizePolicy.Minimum, QSizePolicy.Minimum))
-
-        
+       
         self.toggleRecordButton = QPushButton("Start Recording")
         self.toggleRecordButton.clicked.connect(self.toggle_record_button_clicked)
         self.recordLayout.addWidget(self.toggleRecordButton)
@@ -768,7 +763,7 @@ class CAS_GUI(QMainWindow):
            
             # Create the processor
             self.imageProcessor = ImageProcessorThread(self.processor, 10, 10, inputQueue = inputQueue, 
-                                                       multicore = self.multiCore, 
+                                                       multiCore = self.multiCore, 
                                                        sharedMemory = self.sharedMemory,
                                                        sharedMemoryArraySize = self.sharedMemoryArraySize)
             
@@ -776,7 +771,7 @@ class CAS_GUI(QMainWindow):
             self.processing_options_changed()
         
             # Start the thread
-            if self.imageProcessor is not None:
+            if self.imageProcessor is not None and self.multiCore is False:
                 self.imageProcessor.start()
                                 
     
@@ -808,9 +803,7 @@ class CAS_GUI(QMainWindow):
         palette.setColor(QPalette.HighlightedText, Qt.black)
         palette.setColor(QPalette.Disabled, QPalette.Light, Qt.black)
         palette.setColor(QPalette.Disabled, QPalette.Shadow, QColor(12, 15, 16))
-        
-        
-        
+       
     
 
     def handle_images(self):
@@ -825,7 +818,7 @@ class CAS_GUI(QMainWindow):
         gotRawImage = False
         gotProcessedImage = False
         rawImage = None
-        
+        #self.imageProcessor = None
         if self.imageProcessor is not None:
             
             # If we have an image processor defined and we are doing manual image
@@ -834,33 +827,36 @@ class CAS_GUI(QMainWindow):
             # processor input queue     
             
             if self.imageProcessor is not None and self.manualImageTransfer is True:
-                if self.imageThread.is_image_ready():
+                #if self.imageThread.is_image_ready():
                     rawImage = self.imageThread.get_next_image()
                     self.currentImage = rawImage
-                    
+
                     if rawImage is not None:
                         self.imageProcessor.add_image(rawImage)
                         gotRawImage = True
+
 
 
             # If there is a new processed image, pull it off the queue
             if self.imageProcessor.is_image_ready() is True:
                 gotProcessedImage = True
                 self.currentProcessedImage = self.imageProcessor.get_next_image()
-        
+                
+    
         # We don't have a processor, so will be raw only:
         elif self.imageThread is not None:
             
             self.currentProcessedImage = None 
 
             if self.imageThread.is_image_ready():
-                rawImage  = self.imageThread.get_latest_image()
-        
+                rawImage  = self.imageThread.get_latest_image()        
         else:
             
             self.currentProcessedImage = None 
 
-             
+        #if rawImage is not None:
+        #    self.currentImage = rawImage
+            
         if self.recording and self.videoOut is not None:
             
             if self.recordRaw is False and self.currentProcessedImage is not None and gotProcessedImage:
@@ -887,8 +883,6 @@ class CAS_GUI(QMainWindow):
                         im = Image.fromarray(imToSave)
                         im.save(self.videoOut)
                         self.videoOut.newFrame()
-
-                    
                     self.recordStatusLabel.setText(f"Recorded {self.numFramesRecorded} frames.")
 
 
@@ -1053,7 +1047,7 @@ class CAS_GUI(QMainWindow):
         # Sub-classes can overload create_processor to create processing threads
         if self.imageThread is not None:
             
-            self.create_processors()    
+            #self.create_processors()    
 
             self.cam = self.imageThread.get_camera()
     
@@ -1265,16 +1259,16 @@ class CAS_GUI(QMainWindow):
     def closeEvent(self, event):
         """ Called when main window closed.
         """ 
+        self.gui_save()
 
         if self.camOpen:
             self.end_acquire()
         if self.imageProcessor is not None:
-
             self.imageProcessor.stop() 
-        self.gui_save()
         
         active = mp.active_children()
         for child in active:
+            print(child)
             child.terminate()
            
             

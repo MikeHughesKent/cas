@@ -474,10 +474,15 @@ class CAS_GUI_Bundle(CAS_GUI):
 
         
     def load_calibration_clicked(self):
+        self.load_calibration()
+        
+    
+    def load_calibration(self):
         with open('calib.dat', 'rb') as pickleFile:
             self.imageProcessor.get_processor().pyb.calibration = pickle.load(pickleFile)
         self.processing_options_changed()
         
+    
     def reset_mosaic_clicked(self):
         self.imageProcessor.mosaic.reset()
         
