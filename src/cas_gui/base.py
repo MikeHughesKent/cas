@@ -118,7 +118,7 @@ class CAS_GUI(QMainWindow):
     defaultBackgroundFile = "background.tif"
     backgroundSource = ""
     recordBuffer = []
-    sourceFilename = r"C:\Users\mrh40\Dropbox\Programming\Python\cas\tests\test_data\stack_10.tif"
+    #sourceFilename = r"C:\Users\mrh40\Dropbox\Programming\Python\cas\tests\test_data\stack_10.tif"
     TIF = 0
     AVI = 1    
    
@@ -818,7 +818,7 @@ class CAS_GUI(QMainWindow):
         gotRawImage = False
         gotProcessedImage = False
         rawImage = None
-        #self.imageProcessor = None
+
         if self.imageProcessor is not None:
             
             # If we have an image processor defined and we are doing manual image
@@ -827,15 +827,13 @@ class CAS_GUI(QMainWindow):
             # processor input queue     
             
             if self.imageProcessor is not None and self.manualImageTransfer is True:
-                #if self.imageThread.is_image_ready():
+                if self.imageThread.is_image_ready():
                     rawImage = self.imageThread.get_next_image()
                     self.currentImage = rawImage
 
                     if rawImage is not None:
                         self.imageProcessor.add_image(rawImage)
                         gotRawImage = True
-
-
 
             # If there is a new processed image, pull it off the queue
             if self.imageProcessor.is_image_ready() is True:
@@ -849,22 +847,31 @@ class CAS_GUI(QMainWindow):
             self.currentProcessedImage = None 
 
             if self.imageThread.is_image_ready():
-                rawImage  = self.imageThread.get_latest_image()        
+                rawImage  = self.imageThread.get_latest_image() 
+                gotRawImage = True
+        
+        # We don't have an acquirer to give us raw images either
         else:
             
             self.currentProcessedImage = None 
+            self.currentImage = None
 
-        #if rawImage is not None:
-        #    self.currentImage = rawImage
+
+        if rawImage is not None:
+            self.currentImage = rawImage
+
             
         if self.recording and self.videoOut is not None:
             
-            if self.recordRaw is False and self.currentProcessedImage is not None and gotProcessedImage:
-                imToSave = self.currentProcessedImage
-            elif self.currentImage is not None and gotRawImage:  
-                imToSave = self.currentImage
+            imToSave = None
+            if self.recordRaw is False:
+                if self.currentProcessedImage is not None and gotProcessedImage:
+                    imToSave = self.currentProcessedImage.copy()
+
             else:
-                imToSave = None 
+                if self.currentImage is not None and gotRawImage:  
+                    imToSave = self.currentImage
+           
             
             if imToSave is not None:
                 if self.recordBuffered:
