@@ -13,7 +13,7 @@ aways inherit from this class to maintain future compatibility.
 class ImageProcessorClass:    
   
     
-    def __init__(self):
+    def __init__(self, **kwargs):
         pass
         
                 

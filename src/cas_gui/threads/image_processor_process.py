@@ -73,7 +73,8 @@ class ImageProcessorProcess(multiprocessing.Process):
 
         while True:
             
-                       
+            t0 = time.perf_counter()    
+            
             # Receive an updated instance of the processor object            
             if self.updateQueue.qsize() > 0:
                 self.processor = self.updateQueue.get()
@@ -89,8 +90,7 @@ class ImageProcessorProcess(multiprocessing.Process):
                     else:    
                         self.processor.message(message, parameter)
                
-                # We attempt to pull an image off the queue
-                
+                # We attempt to pull an image off the queue 
                 if self.get_num_images_in_input_queue() >= self.batchProcessNum:
 
                     try:
@@ -106,13 +106,23 @@ class ImageProcessorProcess(multiprocessing.Process):
     
                     except:
                         im = None
-                        #time.sleep(0.001)
+                        time.sleep(0.001)
                 else:
+                    time.sleep(0.001)
                     im = None
                     
                 if im is not None:  
     
-                    outImage = self.processor.process(im) 
+                    ret = self.processor.process(im) 
+                    
+                    if isinstance(ret, tuple):                        
+                        self.imageId = ret[1]
+                        outImage = ret[0]
+                    else:
+                        self.imageId = 0
+                        outImage = ret
+                        
+                    
                     
                     if not self.useSharedMemory:                   
                         
@@ -139,7 +149,6 @@ class ImageProcessorProcess(multiprocessing.Process):
                                 self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)
                                 self.sharedMemorySize = outImage.nbytes
                                 
-           
                             # The output from the processor is copied into the top left corner of the array in shared memory
                             self.sharedMemoryArray[1: 1 + np.shape(outImage)[0], :np.shape(outImage)[1]] = outImage
                             
@@ -149,18 +158,18 @@ class ImageProcessorProcess(multiprocessing.Process):
                             self.sharedMemoryArray[0,0] = self.imSize[0]
                             self.sharedMemoryArray[0,1] = self.imSize[1]
                             self.sharedMemoryArray[0,2] = self.frameStepTime
-
-                            self.imCounter = self.imCounter + 1
                             self.sharedMemoryArray[0,3] = self.imCounter
+                            self.sharedMemoryArray[0,4] = self.imageId
                             self.imCounter = self.imCounter + 1
-
+                            #print(f"processed {self.imCounter}")
                     
                     # Timing
                     self.currentFrameNumber = self.currentFrameNumber + 1
                     self.currentFrameTime = time.perf_counter()
                     self.frameStepTime = self.currentFrameTime - self.lastFrameTime
                     self.lastFrameTime = self.currentFrameTime
-                    
+                    #print(self.frameStepTime, time.perf_counter() - t0)
+
     def get_num_images_in_input_queue(self):
          return self.inputQueue.qsize()
       

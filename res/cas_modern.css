@@ -133,5 +133,13 @@ QLabel[status="true"] {
                        margin-left: 0px;
                        border: 1px solid black;
 
-}            
-                    
+}        
+
+QLineEdit           {  background-color: rgba(40,40,40,255);
+                       font-size:11pt;
+                       color:white} 
+
+QPlainTextEdit      {  background-color: rgba(40,40,40,255);
+                       font-size:11pt;
+                       color:white} 
+       

@@ -20,16 +20,17 @@ import importlib
 
 class ImageAcquisitionThread(threading.Thread):
     
-    def __init__(self, camName, bufferSize, acquisitionLock, **camArgs):
+    def __init__(self, camName, bufferSize = 10, acquisitionLock = None, 
+                 imageQueue = None, auxillaryQueue = None, **camArgs):
         
         # Caller passes the name of the camera class (which should be in a
         # module of the same name) in the variable camName. This is dynamically
         # imported here and an instance created as self.cam.
+       # print(f"acq {inputQueue}")
         
         try:
             moduleName = "cas_gui.cameras." + camName
             camModule = importlib.import_module(moduleName)
-            print(camModule)
 
             self.cam = getattr(camModule, camName)(**camArgs)
         except:    
@@ -48,7 +49,17 @@ class ImageAcquisitionThread(threading.Thread):
         
         self.bufferSize = bufferSize
                 
-        self.imageQueue = queue.Queue(maxsize=self.bufferSize)
+        self.imageQueue = imageQueue
+        if self.imageQueue is None:
+            self.imageQueue = multiprocessing.Queue(maxsize=self.bufferSize)
+            
+        self.auxillaryQueue = auxillaryQueue    
+        if self.auxillaryQueue is None:
+            self.auxillaryQueue = queue.Queue(maxsize=self.bufferSize)    
+            
+        self.numAuxillaryDroppedFrames = 0
+        
+        self.useAuxillaryQueue = False
         
         self.lastFrameTime = 0
         self.frameStepTime = 0
@@ -59,6 +70,7 @@ class ImageAcquisitionThread(threading.Thread):
         #self.cam = None
         
         self.numRemoveWhenFull = 1
+        self.numDroppedFrames = 0
         
         
     def run(self):
@@ -75,28 +87,39 @@ class ImageAcquisitionThread(threading.Thread):
                 if self.imageQueue.full():
                     if self.acquisitionLock is not None: self.acquisitionLock.acquire()
 
+                    # Check for full queues
                     for idx in range(self.numRemoveWhenFull):
                         if self.imageQueue.qsize() > 0:
+                            self.numDroppedFrames += 1
                             temp = self.imageQueue.get()
-                           
+                            
                     if self.acquisitionLock is not None: self.acquisitionLock.release()
+        
+                
+                if self.auxillaryQueue.full():
+            
+                    for idx in range(self.numRemoveWhenFull):
+                        if self.auxillaryQueue.qsize() > 0:
+                            self.numAuxillaryDroppedFrames += 1
+                            temp = self.auxillaryQueue.get()        
+                           
 
                 # Try to get an image. If there is no image ready, this should
                 # return None.
                 frame = self.cam.get_image()
-                #print("getting frame")
 
                 if frame is not None:
-                    #print("frame is not None")
 
                     self.currentFrameNumber = self.currentFrameNumber + 1
                     self.imageQueue.put(frame)
+                    if self.useAuxillaryQueue:
+                        self.auxillaryQueue.put(frame) 
                     self.currentFrame = frame
                     self.currentFrameTime = time.perf_counter()
                     self.frameStepTime = self.currentFrameTime - self.lastFrameTime
                     self.lastFrameTime = self.currentFrameTime
                 else:
-                    pass #time.sleep(0.01)
+                    time.sleep(0.002)
             else:
                 time.sleep(0.01)
         
@@ -115,6 +138,13 @@ class ImageAcquisitionThread(threading.Thread):
         """
         return self.imageQueue.qsize()
     
+    
+    def get_num_images_in_auxillary_queue(self):
+        """ Returns the number of images in the auxillary queue.
+        """
+        return self.auxillaryQueue.qsize()
+    
+    
     def is_image_ready(self):
         """ Returns True if there is at least one image in the output queue.
         """
@@ -122,6 +152,20 @@ class ImageAcquisitionThread(threading.Thread):
             return True
         else:
             return False
+    
+    def set_auxillary_queue_size(self, size):        
+        """ Recreates auxillary queue with specified buffer size
+        """
+        self.auxillaryQueue = queue.Queue(maxsize = size)
+        
+        
+    def is_auxillary_image_ready(self):
+        """ Returns True if there is at least one image in the auxillary queue.
+        """
+        if self.get_num_images_in_auxillary_queue() > 0:
+            return True
+        else:
+            return False    
     
     def get_next_image(self):
         """ Removes the next image from the queue and returns it.
@@ -136,6 +180,21 @@ class ImageAcquisitionThread(threading.Thread):
             return im
         else:
             return None
+        
+        
+    def get_next_auxillary_image(self):
+        """ Removes the next image from the auxillary queue and returns it.
+        """
+        if self.is_auxillary_image_ready():
+            try:
+                im = self.auxillaryQueue.get()
+            except queue.Empty:
+                print("Error - no image")
+                return None
+        
+            return im
+        else:
+            return None    
     
     def get_next_image_wait(self):
         """ Wait until there is an image available in the queue and then return 
@@ -185,6 +244,12 @@ class ImageAcquisitionThread(threading.Thread):
         desirable to remove a full sequence of images.
         """
         self.numRemoveWhenFull = num
+        
+    
+    def set_use_auxillary_queue(self, use):
+        """ Sets whether or not to populate auxillary queue.
+        """
+        self.useAuxillaryQueue = use
     
     
     def flush_buffer(self):
@@ -195,6 +260,17 @@ class ImageAcquisitionThread(threading.Thread):
                 self.imageQueue.get_nowait()  
             except:
                 pass
+    
+    
+    def flush_auxillary_buffer(self):
+        """ Removes all images from auxillary queue.
+        """
+        while not self.auxillaryQueue.empty():
+            try:
+                self.auxillaryQueue.get_nowait()  
+            except:
+                pass
+    
     
                 
     def pause(self):

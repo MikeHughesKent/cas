@@ -31,6 +31,7 @@ class ImageProcessorThread(threading.Thread):
     inputSharedMemory = None
     imSize = (0,0)
     lastImNum = -1
+    numDropped = 0
     
     def __init__(self, processor, inBufferSize, outBufferSize, **kwargs):
         
@@ -49,10 +50,16 @@ class ImageProcessorThread(threading.Thread):
         self.useSharedMemory = kwargs.get('sharedMemory', False)        
         self.sharedMemoryArraySize = kwargs.get('sharedMemoryArraySize', (1024 ,1024))
 
-      
-        if self.inputQueue is None:
-            self.inputQueue = multiprocessing.Queue(maxsize=self.inBufferSize)
-        self.outputQueue = multiprocessing.Queue(maxsize=self.outBufferSize)
+        #if self.inputQueue is None:
+            #if self.multiCore:
+               # self.inputQueue = multiprocessing.Queue(maxsize=self.inBufferSize)
+            #else:
+            #    self.inputQueue = queue.Queue(maxsize=self.inBufferSize)
+
+        if self.multiCore and not self.useSharedMemory:                
+            self.outputQueue = multiprocessing.Queue(maxsize=self.outBufferSize)
+        else:
+            self.outputQueue = queue.Queue(maxsize=self.outBufferSize)
 
         self.currentOutputImage = None
         self.currentInputImage = None
@@ -73,11 +80,17 @@ class ImageProcessorThread(threading.Thread):
             self.updateQueue = multiprocessing.Queue()
             self.messageQueue = multiprocessing.Queue()
             
+            if self.useSharedMemory:
+                outQueue = None
+            else:
+                outQueue = self.outputQueue
+            
             # Create the process and set it running
-            self.process = ImageProcessorProcess(self.inputQueue, self.outputQueue, self.updateQueue, 
+            self.process = ImageProcessorProcess(self.inputQueue, outQueue, self.updateQueue, 
                                                  self.messageQueue, sharedMemoryArraySize = self.sharedMemoryArraySize, 
                                                  useSharedMemory = self.useSharedMemory)
             self.process.start()
+            time.sleep(0.1)
             self.updateQueue.put(self.processor)
            
         
@@ -86,36 +99,83 @@ class ImageProcessorThread(threading.Thread):
     # This loop is run once the thread starts
     def run(self):
 
-        
-         # If we are doing multiCore, we do nothing here because we should already
-         # have the processor running on another core
-         if self.multiCore:
-                               
-             time.sleep(0.01)
-         
-         else:    
-             while self.isStarted:                 
+         while self.isStarted:                 
+
+            
+             if self.multiCore:
+                                   
+                 if self.useSharedMemory:
+                 
+                     # If we have not yet got a reference to the shared memory, get it now
+                     if self.sharedMemory is None:
+                         try:
+                             self.sharedMemory = multiprocessing.shared_memory.SharedMemory(name="CASShare")
+                             self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)  
+                         except:
+                             pass
+                     else:
+                         # The image width, height, processing step time, and frame number are
+                         # stored in a corner of the shared memory
+                         imW = int(self.sharedMemoryArray[0,1])
+                         imH = int(self.sharedMemoryArray[0,0])                       
+                        
+                         imNum = int(self.sharedMemoryArray[0,3])
+                         imIndex = int(self.sharedMemoryArray[0,4])
+
+                         if imNum > self.lastImNum + 1:
+                             self.numDropped += 1
+                             
+                             
+                         # Only pull off and return an image if we haven't already returned this
+                         if imNum > self.lastImNum  and imW > 0 and imH > 0:
+                             im = self.sharedMemoryArray[1:1+imH, :imW] #.copy()
+                             #m = np.zeros((10,10))
+                             self.lastImNum = imNum           
+                         
+                             if self.outputQueue.full():
+                                 temp = self.outputQueue.get()
+                             
+                             self.outputQueue.put_nowait((im, imIndex)) 
+                             #print("got out image")
+                         else:
+                              time.sleep(0.01)
+
+                              
+                 else:  # self.useSharedMemory = False
+                      time.sleep(0.01)
+             
+             else:    
                  
                  if not self.isPaused:
                      
-                     self.handle_flags()     
+                     self.handle_flags()   
+                     
                      # Stop output queue overfilling
                      if self.outputQueue.full():
                          for i in range(self.batchProcessNum):
                              temp = self.outputQueue.get()
                    
-                     if self.get_num_images_in_input_queue() >= self.batchProcessNum:
-                         
+                     if self.get_num_images_in_input_queue() >= self.batchProcessNum:                         
     
                          if self.acquisitionLock is not None: self.acquisitionLock.acquire()
+                         
                          try:
                              if self.batchProcessNum > 1:
+                                 
                                  img = self.inputQueue.get()
+                                 
                                  self.currentInputImage = np.zeros((np.shape(img)[0], np.shape(img)[1], self.batchProcessNum))
                                  self.currentInputImage[:,:,0] = img
+                                 
                                  for i in range(1, self.batchProcessNum):
                                      self.currentInputImage[:,:,i] = self.inputQueue.get()
-                                 self.currentOutputImage = self.process_frame(self.currentInputImage)
+                                 out = self.process_frame(self.currentInputImage)
+                                 
+                                 if isinstance(out, tuple):
+                                     self.currentOutputImage = out[0]
+                                 else:
+                                     self.currentOutputImage = out
+                                 
                                  self.outputQueue.put(self.currentOutputImage)
     
     
@@ -137,6 +197,9 @@ class ImageProcessorThread(threading.Thread):
     
                      else:
                          time.sleep(0.01)
+                         
+                         
+                         
                    
     def pipe_message(self, command, parameter):
         if self.multiCore:
@@ -185,28 +248,7 @@ class ImageProcessorThread(threading.Thread):
         """ Returns true if there is a new processed image ready to be read.
         """
              
-        if self.multiCore and self.useSharedMemory is True:
-            
-            # We need to try to create a reference to the shared memory here if it does not exist. If it
-            # doesn't exist yet it's because the processor hasn't created it, in which case we definitely
-            # dont have an image so can return False
-            if self.sharedMemoryArray is None:
-                try:
-                    self.sharedMemory = multiprocessing.shared_memory.SharedMemory(name="CASShare")
-                    self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)  
-                except:
-                    return False
-            
-            # If we got here we are safe to assume we now have a valid ref
-            # to shared memory            
-            imNum = int(self.sharedMemoryArray[0,3])
-            if imNum > self.lastImNum:
-                 return True
-            else:
-                 return False
-        
-        # If not using shared memory, we can just check the queue
-        elif self.get_num_images_in_output_queue() > 0:
+        if self.get_num_images_in_output_queue() > 0:
             return True
         else:
             return False
@@ -226,38 +268,12 @@ class ImageProcessorThread(threading.Thread):
     def get_next_image(self):
         """ Returns the next available processed image.
         """        
-        
-        if self.multiCore and self.useSharedMemory: 
-            
-           # If we have not yet got a reference to the shared memory, get it now
-           if self.sharedMemory is None:
-               try:
-                   self.sharedMemory = multiprocessing.shared_memory.SharedMemory(name="CASShare")
-                   self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)  
-               except:
-                   return None
-           
-           # The image width, height, processing step time, and frame number are
-           # stored in a corner of the shared memory
-           imW = int(self.sharedMemoryArray[0,1])
-           imH = int(self.sharedMemoryArray[0,0])
-           imNum = int(self.sharedMemoryArray[0,3])
-
-           # Only pull off and return an image if we haven't already returned this
-           if imNum > self.lastImNum:
-               im = self.sharedMemoryArray[1:1+imH, :imW]
-               self.lastImNum = imNum           
-           else:
-               im = None
-       
-        # Otherwise, if we are using queues:
-        else:
-            
-            if self.is_image_ready() is True:   
-                try:
-                    im = self.outputQueue.get_nowait()   
-                except:
-                    im = None
+        im = None         
+        if self.is_image_ready() is True:   
+            try:
+                im = self.outputQueue.get_nowait()   
+            except:
+                im = None
         
         return im
             

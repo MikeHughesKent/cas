@@ -118,7 +118,10 @@ class CAS_GUI(QMainWindow):
     defaultBackgroundFile = "background.tif"
     backgroundSource = ""
     recordBuffer = []
-    #sourceFilename = r"C:\Users\mrh40\Dropbox\Programming\Python\cas\tests\test_data\stack_10.tif"
+    
+    imageId = 0
+    
+    sourceFilename = r"C:\Users\mrh40\Dropbox\Programming\Python\cas\tests\test_data\stack_10.tif"
     TIF = 0
     AVI = 1    
    
@@ -164,11 +167,12 @@ class CAS_GUI(QMainWindow):
         # Make sure the display is correct for whatever camera source 
         # we initiallylly have selected
         self.cam_source_changed()
-        self.show()
         self.recordFolderLabel.setText(self.recordFolder)
-
-        self.create_processors()
         
+        self.inputQueue = mp.Queue(maxsize=self.rawImageBufferSize)
+        self.create_processors()
+        self.show()
+
         
     def apply_default_settings(self):
         """Overload this function in sub-class to provide defaults"""
@@ -614,15 +618,25 @@ class CAS_GUI(QMainWindow):
         self.frameRateLabel = QLabel()
         self.processRateLabel = QLabel()
         self.camStatusPanel = QWidget()
+        self.droppedFramesLabel = QLabel()
+        self.skippedFramesLabel = QLabel()
+
         self.camStatusPanel.setLayout(camStatusLayout:=QGridLayout())
            
         camStatusLayout.addWidget(self.bufferFillLabel,1,1)
-        camStatusLayout.addWidget(self.frameRateLabel,3,1)
-        camStatusLayout.addWidget(self.processRateLabel,4,1)
+        camStatusLayout.addWidget(self.frameRateLabel,2,1)
+        camStatusLayout.addWidget(self.processRateLabel,3,1)
+        camStatusLayout.addWidget(self.skippedFramesLabel,4,1)
+        camStatusLayout.addWidget(self.droppedFramesLabel,5,1)
+
+        
       
         camStatusLayout.addWidget(QLabel('Acq. Buffer:'),1,0)
-        camStatusLayout.addWidget(QLabel('Acquisition fps:'),3,0)
-        camStatusLayout.addWidget(QLabel('Processing fps:'),4,0)
+        camStatusLayout.addWidget(QLabel('Acquisition fps:'),2,0)
+        camStatusLayout.addWidget(QLabel('Processing fps:'),3,0)
+        camStatusLayout.addWidget(QLabel('Skipped Frames:'),4,0)
+        camStatusLayout.addWidget(QLabel('Dropped Frames:'),5,0)
+
         
         self.camSettingsLayout.addWidget(self.camStatusPanel)        
     
@@ -756,13 +770,15 @@ class CAS_GUI(QMainWindow):
             # no longer have access to the raw images since we can't pull them off
             # the queue without competing with the image processor, so for 
             # example we can't make a proper raw recording.
-            if self.imageThread is not None and self.manualImageTransfer is False:
-                inputQueue = self.imageThread.get_image_queue()
-            else:
-                inputQueue = None
+           
+            #if self.imageThread is not None: # and self.manualImageTransfer is False:
+            #    inputQueue = self.imageThread.get_image_queue()
+            #else:
+            #    inputQueue = None
+            #print(inputQueue)    
            
             # Create the processor
-            self.imageProcessor = ImageProcessorThread(self.processor, 10, 10, inputQueue = inputQueue, 
+            self.imageProcessor = ImageProcessorThread(self.processor, 10, 10, inputQueue = self.inputQueue, 
                                                        multiCore = self.multiCore, 
                                                        sharedMemory = self.sharedMemory,
                                                        sharedMemoryArraySize = self.sharedMemoryArraySize)
@@ -771,7 +787,7 @@ class CAS_GUI(QMainWindow):
             self.processing_options_changed()
         
             # Start the thread
-            if self.imageProcessor is not None and self.multiCore is False:
+            if self.imageProcessor is not None:  # and self.multiCore is False:
                 self.imageProcessor.start()
                                 
     
@@ -814,74 +830,70 @@ class CAS_GUI(QMainWindow):
         # Grab the most up-to-date image for display. If not None, we store
         # this in currentImage which is the image displayed in the GUI if the 
         # raw image is being displayed.
-
-        gotRawImage = False
-        gotProcessedImage = False
+        self.gotRawImage = False
+        self.gotProcessedImage = False
         rawImage = None
-
-        if self.imageProcessor is not None:
-            
-            # If we have an image processor defined and we are doing manual image
-            # transfer to a separate input queue to the processor (rather than queue
-            # sharing), and we have a raw image ready, we copy the image to the 
-            # processor input queue     
-            
-            if self.imageProcessor is not None and self.manualImageTransfer is True:
-                if self.imageThread.is_image_ready():
-                    rawImage = self.imageThread.get_next_image()
-                    self.currentImage = rawImage
-
-                    if rawImage is not None:
-                        self.imageProcessor.add_image(rawImage)
-                        gotRawImage = True
-
-            # If there is a new processed image, pull it off the queue
-            if self.imageProcessor.is_image_ready() is True:
-                gotProcessedImage = True
-                self.currentProcessedImage = self.imageProcessor.get_next_image()
-                
-    
-        # We don't have a processor, so will be raw only:
-        elif self.imageThread is not None:
-            
-            self.currentProcessedImage = None 
-
-            if self.imageThread.is_image_ready():
-                rawImage  = self.imageThread.get_latest_image() 
-                gotRawImage = True
+        im = None
         
-        # We don't have an acquirer to give us raw images either
+        if self.imageThread is not None:
+            rawImage = self.imageThread.get_latest_image()        
+            self.currentImage = self.imageThread.get_latest_image()
+            self.gotRawImage = True
+        else:
+            self.currentImage = None    
+    
+
+        
+        if self.imageProcessor is not None:
+      
+            # If there is a new processed image, pull it off the queue
+            im = self.imageProcessor.get_next_image()
+            
+            # Some processors return a tuple containing other information. If
+            # we get a tuple then the first element is always the image and the second
+            # element is an ID number for the image
+            if isinstance(im, tuple):
+                self.imageId = im[1]
+                im = im[0]           
+            
+            if im is not None:
+                self.currentProcessedImage = im
+                self.gotProcessedImage = True
+                
         else:
             
             self.currentProcessedImage = None 
-            self.currentImage = None
+        
+            
+        if self.recording:
+            self.record()    
+            
+            
 
-
-        if rawImage is not None:
-            self.currentImage = rawImage
-
+    def record(self):
             
         if self.recording and self.videoOut is not None:
             
             imToSave = None
             if self.recordRaw is False:
-                if self.currentProcessedImage is not None and gotProcessedImage:
+                if self.currentProcessedImage is not None and self.gotProcessedImage:
                     imToSave = self.currentProcessedImage.copy()
 
-            else:
-                if self.currentImage is not None and gotRawImage:  
-                    imToSave = self.currentImage
-           
+            elif not self.recordBuffered:
+                #if self.currentImage is not None and self.gotRawImage:  
+                 #   imToSave = self.currentImage
+                imToSave = self.imageThread.get_next_auxillary_image() 
             
-            if imToSave is not None:
-                if self.recordBuffered:
-                    self.numFramesBuffered = self.numFramesBuffered + 1
-                    if self.numFramesBuffered <= self.recordBufferSize:
-                        self.recordBuffer.append(imToSave)
-                        self.recordStatusLabel.setText(f"Buffered {self.numFramesBuffered} frames of {self.recordBufferSize}.")
-                    else:
-                        self.record_buffer_full()
-                else:                                  
+            
+            if self.recordBuffered:
+                self.numFramesBuffered = self.imageThread.get_num_images_in_auxillary_queue()
+                if self.numFramesBuffered < self.recordBufferSize:
+                    self.recordStatusLabel.setText(f"Buffered {self.numFramesBuffered} frames of {self.recordBufferSize}.")
+                else:
+                    self.record_buffer_full()
+            else:
+                if imToSave is not None:
+                
                     self.numFramesRecorded = self.numFramesRecorded + 1
                     if self.recordType == self.AVI:
                         outImg = self.im_to_vid_frame(imToSave)
@@ -897,11 +909,15 @@ class CAS_GUI(QMainWindow):
        """ Displays the current raw image. 
        Sub-classes should overload this if additional display boxes used.
        """
-       if self.currentProcessedImage is not None:           
+       #print("updat")
+       #return
+       if self.currentProcessedImage is not None:   
            self.mainDisplay.set_image(self.currentProcessedImage) 
 
+
        elif self.currentImage is not None and self.fallBackToRaw:
-           self.mainDisplay.set_image(self.currentImage)           
+           self.mainDisplay.set_image(self.currentImage)    
+  
        
         
     def update_camera_status(self):
@@ -912,16 +928,24 @@ class CAS_GUI(QMainWindow):
       
        if self.imageProcessor is not None:
            procFps = self.imageProcessor.get_actual_fps()
+           numSkipped = self.imageProcessor.numDropped
            self.processRateLabel.setText(str(round(procFps,1)))
+           self.skippedFramesLabel.setText(str(numSkipped))
       
        if self.imageThread is not None: 
            nWaiting = self.imageThread.get_num_images_in_queue()
            fps = self.imageThread.get_actual_fps()
+           numDropped = self.imageThread.numDroppedFrames
+           self.droppedFramesLabel.setText(str(numDropped))
+
+
        else:
            nWaiting = 0
            fps = 0
        self.frameRateLabel.setText(str(round(fps,1)))
        self.bufferFillLabel.setText(str(nWaiting))
+
+
        
        
     def update_camera_ranges_and_values(self):       
@@ -1016,14 +1040,11 @@ class CAS_GUI(QMainWindow):
         """
         self.update_camera_status()
         self.update_image_display()
-       # if self.recording is True:
-       #     self.recordBtn.setText('Stop Recording')
-       # else:
-       #     self.recordBtn.setText('Start Recording')
+
         
     
     def start_acquire(self):       
-        """ Begin acquiring images by creating an image acquiistion thread 
+        """ Begin acquiring images by creating an image acquisition thread 
         and starting it. The image acquisition thread grabs images to a queue
         which can then be retrieved by the GUI for processing/display
         """
@@ -1041,20 +1062,17 @@ class CAS_GUI(QMainWindow):
 
             if self.sourceFilename is not None:
 
-                self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock, filename=self.sourceFilename)                                                  
+                self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock, imageQueue = self.inputQueue, filename=self.sourceFilename)                                                  
                 self.cam = self.imageThread.get_camera()
                 self.cam.pre_load(-1)
         else:
-            QApplication.setOverrideCursor(Qt.WaitCursor)
-            self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock)
-            QApplication.restoreOverrideCursor()
+            self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock,imageQueue = self.inputQueue)
             
 
 
         # Sub-classes can overload create_processor to create processing threads
         if self.imageThread is not None:
             
-            #self.create_processors()    
 
             self.cam = self.imageThread.get_camera()
     
@@ -1075,6 +1093,9 @@ class CAS_GUI(QMainWindow):
                 self.liveButton.setChecked(True)
             else:
                 self.liveButton.setChecked(False)
+                
+                
+                
 
     def pause_acquire(self):
         if self.camOpen:
@@ -1358,7 +1379,8 @@ class CAS_GUI(QMainWindow):
         else:
             if self.recordBuffered:
                 self.record_buffer_full()
-
+            else:
+                self.stop_recording()
         self.update_GUI()    
     
     
@@ -1468,9 +1490,9 @@ class CAS_GUI(QMainWindow):
         
         now = datetime.now()
         if self.recordType == self.TIF:
-            self.recordFilename = (self.recordFolder / Path(now.strftime('record_Y_%m_%d_%H_%M_%S.tif'))).as_posix()
+            self.recordFilename = (self.recordFolder / Path(now.strftime('record_%Y_%m_%d_%H_%M_%S.tif'))).as_posix()
         else:
-            self.recordFilename = (self.recordFolder / Path(now.strftime('record_Y_%m_%d_%H_%M_%S.avi'))).as_posix()
+            self.recordFilename = (self.recordFolder / Path(now.strftime('record_%Y_%m_%d_%H_%M_%S.avi'))).as_posix()
 
         
         self.recordBuffered = self.recordBufferCheck.isChecked()
@@ -1482,6 +1504,12 @@ class CAS_GUI(QMainWindow):
         if self.recordRawCheck.isChecked() or self.imageProcessor is None:
             self.recordRaw = True
             recordImage = self.currentImage
+            self.imageThread.flush_auxillary_buffer()
+            self.imageThread.set_use_auxillary_queue(True)
+            if self.recordBuffered:
+                # Create it one larger, otherwise image acquisition thread sees it
+                # full after last frame and tries to make space by removing the first frame
+                self.imageThread.set_auxillary_queue_size(self.recordBufferSize + 1)
         else:
             self.recordRaw = False
             recordImage = self.currentProcessedImage
@@ -1526,13 +1554,18 @@ class CAS_GUI(QMainWindow):
        
     
     def record_buffer_full(self):
+        print("buffer full")
         
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
         self.recording = False
 
-        for idx, imToSave in enumerate(self.recordBuffer):
-          
+        self.imageThread.set_use_auxillary_queue(False)
+        #for idx, imToSave in enumerate(self.recordBuffer):
+            
+        for idx in range(self.numFramesBuffered):  
+            print(idx, self.imageThread.get_num_images_in_auxillary_queue())
+            imToSave = self.imageThread.get_next_auxillary_image()
             if imToSave is not None:
                 self.numFramesRecorded = self.numFramesRecorded + 1
                 
@@ -1548,6 +1581,8 @@ class CAS_GUI(QMainWindow):
         self.recordBuffer = []
         self.numFramesBuffered = 0
         self.stop_recording()
+        self.imageThread.set_use_auxillary_queue(False)
+
         QApplication.restoreOverrideCursor()
 
         
@@ -1555,6 +1590,7 @@ class CAS_GUI(QMainWindow):
     def stop_recording(self):
         if self.recordType == self.AVI and self.videoOut is not None:
             self.videoOut.release()
+        self.imageThread.set_use_auxillary_queue(False)
         self.videoOut = None
         self.recording = False
         self.toggleRecordButton.setText("Start Recording")

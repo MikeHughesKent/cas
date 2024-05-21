@@ -4,7 +4,7 @@ Kent-CAS-GUI Example
 
 This examples shows how to extend CAS GUI to create a simple application
 to process and display images from a camera. The processing is performed
-only a different processor.
+using a separate process.
 
 @author: Mike Hughes, Applied Optics Group, University of Kent
 
@@ -31,15 +31,15 @@ class GaussianFilter(ImageProcessorClass):
     filterSize = None   
     
     def __init__(self, applyFilter = False, filterSize = None):
-        """ Technically not needed since we are not adding anything, but
-        if any additional initialisation is needed, it goes here.
+        """ If any additional initialisation is needed, it goes here.
         """
         self.applyFilter = applyFilter
         self.filterSize = filterSize
         
                 
     def process(self, inputFrame):
-        """ This is where we do the processing.
+        """ This is where we do the processing. This function takes a raw
+        image and returns the processed image, both as numpy arrays.
         """
         if self.applyFilter and self.filterSize > 0:
             outputFrame = gaussian_filter(inputFrame, self.filterSize)
@@ -103,7 +103,7 @@ class example_GUI(CAS_GUI):
         """
         This function is called when the processing options are changed so
         that we can update the processor. Here we are just changing attributes
-        of the imageProcessor class directly. For more complex processing,
+        of the processor class directly. For more complex processing,
         where some checking of the values or more complicated changes are needed,
         it is better to define functions such as set_filter_size to handle
         this in the image processor and call these functions instead.

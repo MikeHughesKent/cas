@@ -31,7 +31,6 @@ class SimulatedCamera(GenericCameraInterface):
         if self.filename is not None:
             self.dataset = Image.open(self.filename)
 
-        pass
                    
         
     def __str__(self):
@@ -58,7 +57,7 @@ class SimulatedCamera(GenericCameraInterface):
     def pre_load(self, nImages):
         # Pre-Loads nImages into memory, avoiding file read timing slowing
         # down apparent frame rate
-        
+        print("Pre-loading images ...")
         h = np.shape(self.dataset)[0]
         w = np.shape(self.dataset)[1]
         
@@ -72,6 +71,8 @@ class SimulatedCamera(GenericCameraInterface):
             self.dataset.seek(i)
             self.imageBuffer[:,:,i] = np.array(self.dataset).astype(self.dtype)
         self.preLoaded = True
+        print("Images Pre-loaded")
+
 
 
     def set_current_image(self, imNum):
