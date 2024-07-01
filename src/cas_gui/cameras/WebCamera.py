@@ -33,6 +33,8 @@ class WebCamera(GenericCameraInterface):
         
     def open_camera(self, camNum):
         self.vc = cv.VideoCapture(camNum)
+        self.camera_open = True
+
       
         
     def close_camera(self):

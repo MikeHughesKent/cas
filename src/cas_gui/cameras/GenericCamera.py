@@ -11,6 +11,8 @@ Mike Hughes, Applied Optics Group, University of Kent
         
 class GenericCameraInterface:
     
+    camera_open = False
+    
     def __init__(self):        
         pass
             
@@ -31,6 +33,8 @@ class GenericCameraInterface:
         pass
     
     
+    def is_camera_open(self):
+        return self.camera_open
     
     ##### Parameter Value Setting    
     def get_nodes(self):

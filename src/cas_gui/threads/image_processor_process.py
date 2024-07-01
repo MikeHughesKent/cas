@@ -47,13 +47,14 @@ class ImageProcessorProcess(multiprocessing.Process):
     imSize = (0,0)
     imCounter = 0
     
-    def __init__(self, inQueue, outQueue, updateQueue, messageQueue, useSharedMemory = False, sharedMemoryArraySize = (500,10000)):
+    def __init__(self, inQueue, outQueue, updateQueue, messageQueue, useSharedMemory = False, sharedMemoryArraySize = (2048,2048), statusQueue = None):
         
         super().__init__()          
                       
         self.updateQueue = updateQueue
         self.inputQueue = inQueue
         self.outputQueue = outQueue
+        self.statusQueue = statusQueue
         self.messageQueue = messageQueue
         self.useSharedMemory = useSharedMemory
         self.sharedMemoryArraySize = sharedMemoryArraySize
@@ -89,7 +90,11 @@ class ImageProcessorProcess(multiprocessing.Process):
                         self.set_batch_process_num(parameter)
                     else:    
                         self.processor.message(message, parameter)
-               
+                        if self.statusQueue is not None:
+                            try:
+                                self.statusQueue.put_nowait(message)
+                            except:
+                                pass
                 # We attempt to pull an image off the queue 
                 if self.get_num_images_in_input_queue() >= self.batchProcessNum:
 
@@ -145,7 +150,7 @@ class ImageProcessorProcess(multiprocessing.Process):
                                     self.sharedMemory = multiprocessing.shared_memory.SharedMemory(create=True, size=temp.nbytes, name = "CASShare")
                                 except:
                                     self.sharedMemory = multiprocessing.shared_memory.SharedMemory(size=temp.nbytes, name = "CASShare")
-
+                                print("Shared memory created.")    
                                 self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)
                                 self.sharedMemorySize = outImage.nbytes
                                 

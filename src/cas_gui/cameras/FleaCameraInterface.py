@@ -1,24 +1,21 @@
 # -*- coding: utf-8 -*-
 """
 Kent-CAS: Camera Acquisition System
+
 Camera interface for Flea Camera.
 
 Mike Hughes, Applied Optics Group, University of Kent
 
 """
-  
-
-from cas_gui.cameras.GenericCamera import GenericCameraInterface
- 
-import PySpin
 
 import time
-
 import warnings
+  
 
-       
+import PySpin
 
-
+from cas_gui.cameras.GenericCamera import GenericCameraInterface  
+ 
 
 class FleaCameraInterface(GenericCameraInterface):
     
@@ -46,6 +43,7 @@ class FleaCameraInterface(GenericCameraInterface):
         PySpin.intfICommand: 'command',
     }
     
+    
     def __init__(self):        
         self.system = PySpin.System.GetInstance()
         self.camList = self.system.GetCameras()
@@ -71,8 +69,12 @@ class FleaCameraInterface(GenericCameraInterface):
             
             self.cam.BeginAcquisition()            
             
+            self.camera_open = True
+        
             return self.cam
+
         else:
+
             print("Camera not available.")
             return False
 
@@ -206,6 +208,8 @@ class FleaCameraInterface(GenericCameraInterface):
     ###### Frame Rate
 
     def set_frame_rate_on(self):
+        """ Enables or disables frame rate control """
+
         
         try:
             nodemap = self.cam.GetNodeMap()
@@ -241,6 +245,7 @@ class FleaCameraInterface(GenericCameraInterface):
     
     
     def get_frame_rate(self):
+        
         if self.is_frame_rate_enabled():
             return self.cam.AcquisitionFrameRate.GetValue()
         else:
@@ -248,14 +253,17 @@ class FleaCameraInterface(GenericCameraInterface):
 
     
     def get_frame_rate_range(self):
+        
         return self.cam.AcquisitionFrameRate.GetMin(), self.cam.AcquisitionFrameRate.GetMax()      
     
     
     def is_frame_rate_enabled(self):
+        
         return (self.cam.AcquisitionFrameRate.GetAccessMode() == PySpin.RW )
     
        
     def get_measured_frame_rate(self):
+        
         return None 
 
 

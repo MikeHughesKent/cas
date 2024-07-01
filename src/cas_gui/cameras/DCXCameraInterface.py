@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Kent-CAS: Camera Acquisition System
-Generic camera interface for Camera Acquisition Based GUIs.
+Camera Interface for Thorlabs DCX camera
 
 Mike Hughes, Applied Optics Group, University of Kent
 
@@ -9,9 +9,10 @@ Mike Hughes, Applied Optics Group, University of Kent
   
 from instrumental import instrument, list_instruments
 from instrumental.drivers.cameras import uc480
+from cas_gui.cameras.GenericCamera import GenericCameraInterface  
    
         
-class DCXCameraInterface:
+class DCXCameraInterface(GenericCameraInterface):
     
     def __init__(self):    
         pass
@@ -25,8 +26,10 @@ class DCXCameraInterface:
         self.cam = uc480.UC480_Camera(instruments[0]) 
 
         #print(dir(self.cam))
-        self.cam.pixelclock = '35 MHz'
+        self.cam.pixelclock = '40 MHz'
         self.cam.start_live_video(exposure_time='2 ms')
+        self.camera_open = True
+
 
                 
     def close_camera(self):
@@ -50,19 +53,14 @@ class DCXCameraInterface:
         return None        
 
     def set_frame_rate(self, fps):
-        #print('Trying to set frame rate to:', fps)
         frompsOut = self.cam._dev.SetFrameRate(fps)
-        #print('Frame rate is now:', self.get_frame_rate())
-
-
         return True 
     
     def get_frame_rate(self):
-        #print("Reprting frame rate as", self.cam.framerate.magnitude)
         return self.cam.framerate.magnitude 
     
     def get_frame_rate_range(self):
-        return 0.1, 25   
+        return 8, 22   
     
     def is_frame_rate_enabled(self):
         return True 
@@ -78,7 +76,6 @@ class DCXCameraInterface:
 
     def set_exposure(self, exposure):
         self.cam._set_exposure(str(exposure) + ' ms')
-        #print(str(exposure) + ' ms')
         return True       
         
     def get_exposure(self):
@@ -86,7 +83,6 @@ class DCXCameraInterface:
  
     
     def get_exposure_range(self):
-        #print("Min, Max Exposure: ", self.cam._get_exposure_inc().magnitude, 950/self.cam.framerate.magnitude)
         return self.cam._get_exposure_inc().magnitude, 950/self.cam.framerate.magnitude
     
         

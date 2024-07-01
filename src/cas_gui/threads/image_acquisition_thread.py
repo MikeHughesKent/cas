@@ -30,6 +30,8 @@ class ImageAcquisitionThread(threading.Thread):
         
         try:
             moduleName = "cas_gui.cameras." + camName
+            print(moduleName)
+
             camModule = importlib.import_module(moduleName)
 
             self.cam = getattr(camModule, camName)(**camArgs)

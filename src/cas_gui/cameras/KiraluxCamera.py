@@ -33,6 +33,8 @@ class KiraluxCamera(GenericCameraInterface):
         self.camera.frames_per_trigger_zero_for_unlimited = 0
         self.camera.arm(2)
         self.camera.issue_software_trigger()
+        self.camera_open = True
+
         
       
         

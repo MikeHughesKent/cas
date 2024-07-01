@@ -60,6 +60,8 @@ class ImageProcessorThread(threading.Thread):
             self.outputQueue = multiprocessing.Queue(maxsize=self.outBufferSize)
         else:
             self.outputQueue = queue.Queue(maxsize=self.outBufferSize)
+            
+        self.statusQueue = multiprocessing.Queue(maxsize = 1000)    
 
         self.currentOutputImage = None
         self.currentInputImage = None
@@ -88,7 +90,7 @@ class ImageProcessorThread(threading.Thread):
             # Create the process and set it running
             self.process = ImageProcessorProcess(self.inputQueue, outQueue, self.updateQueue, 
                                                  self.messageQueue, sharedMemoryArraySize = self.sharedMemoryArraySize, 
-                                                 useSharedMemory = self.useSharedMemory)
+                                                 useSharedMemory = self.useSharedMemory, statusQueue = self.statusQueue)
             self.process.start()
             time.sleep(0.1)
             self.updateQueue.put(self.processor)
@@ -108,11 +110,17 @@ class ImageProcessorThread(threading.Thread):
                  
                      # If we have not yet got a reference to the shared memory, get it now
                      if self.sharedMemory is None:
+                         temp = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32')
                          try:
-                             self.sharedMemory = multiprocessing.shared_memory.SharedMemory(name="CASShare")
-                             self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)  
+                             self.sharedMemory = multiprocessing.shared_memory.SharedMemory(create=True, size=temp.nbytes, name = "CASShare")
                          except:
-                             pass
+                             self.sharedMemory = multiprocessing.shared_memory.SharedMemory(size=temp.nbytes, name = "CASShare")
+
+                         #try:
+                             #self.sharedMemory = multiprocessing.shared_memory.SharedMemory(name="CASShare")
+                         self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)  
+                         #except:
+                          #   pass
                      else:
                          # The image width, height, processing step time, and frame number are
                          # stored in a corner of the shared memory
@@ -326,6 +334,16 @@ class ImageProcessorThread(threading.Thread):
         """
         with self.inputQueue.mutex:
             self.inputQueue.queue.clear()
+            
+    def flush_status_buffer(self):
+        """ Removes all messages from status queue
+        """
+        while True:
+            try:
+                null = self.statusQueue.get_nowait()
+            except:
+                break
+            
             
             
     def set_batch_process_num(self, num):

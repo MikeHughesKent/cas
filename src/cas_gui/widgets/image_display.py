@@ -93,6 +93,8 @@ class ImageDisplay(QLabel):
    
    imageMode = MONO
    
+   minAutoscaleUpper = -1e10
+   
    overlays = []
    nOverlays = 0
    
@@ -267,7 +269,7 @@ class ImageDisplay(QLabel):
            if self.autoScale: #and np.max(img) != 0:
                img = img.astype('float32')
                img = img - np.min(img)
-               m = np.max(img)
+               m = max(np.max(img), self.minAutoscaleUpper)
                if m > 0:
                    sf =  255 / m
                else:
@@ -635,9 +637,6 @@ class ImageDisplay(QLabel):
            painter.setBrush(self.zoomIndicatorBrush)
            painter.drawRect(int(x + x2), int(y + y2), int(w2), int(h2))  
 
-
-
-           
       
        ##################### Draw status bar 
        if self.isStatusBar and self.pmap is not None:
@@ -707,16 +706,14 @@ class ImageDisplay(QLabel):
                    painter.setPen(self.graphCursorPen)
                    painter.drawEllipse(x-self.graphCursorSize,y -self.graphCursorSize, self.graphCursorSize * 2,self.graphCursorSize *2)
 
-
-
            xPos = int(round((self.width() - self.pmap.width()) /2))
            painter.setBrush(self.statusBrush)
            painter.setPen(self.statusPen)
-           painter.drawRect(int(xPos + 1), int(self.height() - fm.height() - 5), int(self.pmap.width() - 2), int(fm.height() + 4))
+           painter.drawRect(int(xPos + 1), int(self.height() - fm.height() - 5), int(self.pmap.width() - 2), int(fm.height() + 8))
            painter.setPen(self.statusTextPen)
            painter.drawText(int(xPos + 10), int(self.height() - 6), text)
           
-        
+       self.update() 
         
    def add_overlay(self, overlayType, *args):
        """ Adds an overlay to the list of visible overlays. overlayType can be ELLIPSE, RECTANGLE, POINT or LINE.

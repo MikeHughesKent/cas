@@ -43,6 +43,8 @@ class SimulatedCamera(GenericCameraInterface):
         
     def open_camera(self, camID):  
         self.dataset = Image.open(self.filename)
+        self.camera_open = True
+
                
                 
     def close_camera(self):

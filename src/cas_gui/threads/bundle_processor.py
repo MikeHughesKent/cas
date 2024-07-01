@@ -59,13 +59,10 @@ class BundleProcessor(ImageProcessorClass):
                 way = bool(np.mean(self.previousImage) > np.mean(inputFrame))
                 #print(np.mean(self.previousImage))
                 #print(np.mean(inputFrame))
-                print(way)
                 if way is False:
                     outputFrame = inputFrame.astype('float64') - self.previousImage
-                    print("in - prev")
                 else:
                     outputFrame = self.previousImage - inputFrame.astype('float64')
-                    print("prev - in")
                 #print(np.mean(outputFrame))
                 #outputFrame = (outputFrame - np.min(outputFrame)).astype('uint8')    
             self.previousImage = inputFrame.astype('float64')
