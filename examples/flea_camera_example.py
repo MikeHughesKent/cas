@@ -11,7 +11,7 @@ import math
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-from FleaCameraInterface import FleaCameraInterface
+from cas_gui.cameras.FleaCameraInterface import FleaCameraInterface
 
 
 # Create an instance of the camera interface

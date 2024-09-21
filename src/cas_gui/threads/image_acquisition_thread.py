@@ -297,5 +297,7 @@ class ImageAcquisitionThread(threading.Thread):
         time.sleep(0.5)
         if self.cam is not None:
             self.cam.close_camera()
+            time.sleep(0.5)
+
             self.cam.dispose()
             del(self.cam)

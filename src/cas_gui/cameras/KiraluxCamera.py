@@ -7,13 +7,18 @@ Created on Sun Jun 20 07:28:31 2021
 
 import cv2 as cv
 import time
+import sys
+
+import os
+
+path = os.path.split(__file__)[0] + r"\thorlabs dll"
+sys.path.append(path)
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK, TLCamera, Frame
 from thorlabs_tsi_sdk.tl_camera_enums import SENSOR_TYPE
 from thorlabs_tsi_sdk.tl_mono_to_color_processor import MonoToColorProcessorSDK
 import numpy as np
 from cas_gui.cameras.GenericCamera import GenericCameraInterface  
     
-                
         
 class KiraluxCamera(GenericCameraInterface):
     

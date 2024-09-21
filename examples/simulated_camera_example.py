@@ -11,7 +11,7 @@ import math
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-from SimulatedCamera import SimulatedCamera
+from cas_gui.cameras.SimulatedCamera import SimulatedCamera
 
 # This is the tif file containing images to be used a simulated camera feed
 filename = Path('data/vid_example.tif')

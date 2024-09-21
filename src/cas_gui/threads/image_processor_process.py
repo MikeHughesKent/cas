@@ -95,6 +95,7 @@ class ImageProcessorProcess(multiprocessing.Process):
                                 self.statusQueue.put_nowait(message)
                             except:
                                 pass
+                
                 # We attempt to pull an image off the queue 
                 if self.get_num_images_in_input_queue() >= self.batchProcessNum:
 

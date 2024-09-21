@@ -9,6 +9,7 @@ aways inherit from this class to maintain future compatibility.
 
 """
 
+import magicattr
 
 class ImageProcessorClass:    
   
@@ -19,18 +20,21 @@ class ImageProcessorClass:
                 
     def process(self, inputFrame):
         pass
-    
-    
+       
     
                 
     def message(self, message, parameter):  
 
-        f = getattr(self, message)
-        if isinstance(parameter, tuple):
-            f(*parameter)    
-        elif parameter is None:
-            f()
+        f = magicattr.get(self, message)
+        if callable(f):
+            if isinstance(parameter, tuple):
+                if len(parameter) == 0:
+                    f()
+                else:    
+                    f(*parameter)    
+
+            else:
+                f(parameter)
         else:
-            f(parameter)
-   
-       
+            magicattr.set(self, message, parameter)
+             

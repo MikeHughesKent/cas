@@ -1,10 +1,11 @@
 # CAS and CAS-GUI - Kent Camera Acquisition System
 
+CAS is hardware abstraction layers for camera acquisition and control in Python.
+
 CAS-GUI is a framework for building graphical user interfaces in Python that 
 involves acquiring, processing and displaying images from cameras or 
 camera-type systems
 
-It is based on the CAS hardware abstraction layer for cameras.
 
 CAS and CAS-GUI are developed in 
 [Mike Hughes' lab](https://research.kent.ac.uk/applied-optics/hughes) 
@@ -14,7 +15,7 @@ School of Physics & Astronomy, University of Kent.
 We use CAS-GUI as the basis of several imaging systems, including endomicroscopes 
 and holographic microscopes. External users are welcome to make use of this 
 code for other purposes, but be aware that it is not currently fully documented or 
-tested outside of our specific applications. There are two examples of custom 
+tested outside of our specific applications. There are three examples of custom 
 GUIs in the 'examples' folder. and if you  have an interesting use case we can 
 provide some limited support.
 
@@ -41,15 +42,20 @@ GUIs are built using PyQt5. Images are displayed using an instance of
 for displaying scientific images.
 
 To create a GUI for a specific purpose, create a new class that inherits from 
-CAS_GUI in base.py. Two simple example are provided in the examples folder - gui_example 
-and gui_multi_frame_example. The former demonstrates how a Gaussian smoothing filter 
-can be applied to the images grabbed from a camera, while the latter 
-demonstrates averaging of frames. These 
-guis can be used as templates to begin building GUIs with 
+CAS_GUI in base.py. Three simple example are provided in the examples folder - 
+(gui_example)[https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example.py], 
+(gui_example_multi_frame)[https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example_multi_frame.py]
+and (gui_example_multi_core)[https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example_multi_core.py].
+
+gui_example demonstrates how a Gaussian smoothing filter can be applied to the 
+images grabbed from a camera, while the gui_example_multi_frame demonstrates 
+averaging of frames. gui_example_multi_core is the same as gui_example except
+that the processing is performed on a different core for improved speed using
+multiprocessing. These GUIs can be used as templates to begin building GUIs with 
 custom image processing pipelines.
 
 There is also an example of a more complex GUI, CAS_GUI_Bundle, 
-in the src/cas_gui/subclasses folder, but this is not fully documented.
+in the (subclasses)[https://github.com/MikeHughesKent/cas/blob/main/src/cas_gui/subclasses] folder, but this is not fully documented.
 
 
 ## Supported Cameras

@@ -48,7 +48,7 @@ class ImageProcessorThread(threading.Thread):
         self.acquisitionLock = kwargs.get('acquisitionLock', None)
         self.multiCore = kwargs.get('multiCore', False)
         self.useSharedMemory = kwargs.get('sharedMemory', False)        
-        self.sharedMemoryArraySize = kwargs.get('sharedMemoryArraySize', (1024 ,1024))
+        self.sharedMemoryArraySize = kwargs.get('sharedMemoryArraySize', (2048, 2048))
 
         #if self.inputQueue is None:
             #if self.multiCore:
@@ -206,8 +206,18 @@ class ImageProcessorThread(threading.Thread):
                      else:
                          time.sleep(0.01)
                          
-                         
-                         
+    def acquire_set(self):
+    
+        img = self.inputQueue.get()
+
+        self.currentInputImage = np.zeros((np.shape(img)[0], np.shape(img)[1], self.batchProcessNum))
+        self.currentInputImage[:,:,0] = img
+        
+        for i in range(1, self.batchProcessNum):
+            self.currentInputImage[:,:,i] = self.inputQueue.get()                 
+        
+        return self.currentInputImage[:,:,:]    
+         
                    
     def pipe_message(self, command, parameter):
         if self.multiCore:
@@ -387,6 +397,6 @@ class ImageProcessorThread(threading.Thread):
     def update_settings(self):
         """ Sends a copy of the processor class to the process running on
         another core. """
-
-        if self.updateQueue is not None:
-            self.updateQueue.put(self.processor)
+        print("update")
+       # if self.updateQueue is not None:
+       #     self.updateQueue.put(self.processor)

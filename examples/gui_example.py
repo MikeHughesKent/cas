@@ -9,7 +9,6 @@ to process and display images from a camera.
 
 """
 
-
 import sys 
 import os
 from pathlib import Path
@@ -26,6 +25,10 @@ from cas_gui.threads.image_processor_class import ImageProcessorClass
 
 
 class Filter(ImageProcessorClass):
+    """ This is where we define the processing that happens to the image. We
+    sub-class ImageProcessorClass and, at a minimum, implement __init__ to
+    receive settings and process to process each frame.
+    """    
     
     applyFilter = False
     filterSize = None   
@@ -50,6 +53,10 @@ class Filter(ImageProcessorClass):
 
 
 class example_GUI(CAS_GUI):
+    """ This is the main class, this is a sub-class of CAS_GUI. In this example
+    we use the add_settings() method to add some settings to the settings menu and
+    processing_options_changed() to handle changes to these settings.
+    """
 
     # If the class name is changed, must also change the window = example_GUI()
     # line at the bottom of the file.
@@ -71,6 +78,7 @@ class example_GUI(CAS_GUI):
     # Default source for simulated camera
     sourceFilename = Path('data/vid_example.tif')  
 
+
     resPath = "..\\res"         
         
             
@@ -88,8 +96,7 @@ class example_GUI(CAS_GUI):
         settingsLayout.addWidget(QLabel("Filter Size (px):"))
         self.filterSizeInput = QSpinBox(objectName = 'FilterSizeInput')
         settingsLayout.addWidget(self.filterSizeInput)  
-        self.filterSizeInput.valueChanged[int].connect(self.processing_options_changed)
-        
+        self.filterSizeInput.valueChanged[int].connect(self.processing_options_changed)        
            
 
     def processing_options_changed(self):
@@ -111,7 +118,6 @@ class example_GUI(CAS_GUI):
         # want to apply the new processing immediately, so we need to call
         # update_file_processing.
         self.update_file_processing()
-
         
         
 # Launch the GUI

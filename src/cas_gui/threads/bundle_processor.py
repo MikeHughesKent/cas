@@ -55,20 +55,26 @@ class BundleProcessor(ImageProcessorClass):
         outputFrame = inputFrame
 
         if self.dualMode:
+            #print(self.dualMode)
             if self.previousImage is not None:
-                way = bool(np.mean(self.previousImage) > np.mean(inputFrame))
+            #    way = bool(np.mean(self.previousImage) > np.mean(inputFrame))
                 #print(np.mean(self.previousImage))
                 #print(np.mean(inputFrame))
-                if way is False:
-                    outputFrame = inputFrame.astype('float64') - self.previousImage
-                else:
-                    outputFrame = self.previousImage - inputFrame.astype('float64')
+               # if way is False:
+               #     outputFrame = inputFrame.astype('float64') - self.previousImage
+               # else:
+               #     outputFrame = self.previousImage - inputFrame.astype('float64')
                 #print(np.mean(outputFrame))
-                #outputFrame = (outputFrame - np.min(outputFrame)).astype('uint8')    
-            self.previousImage = inputFrame.astype('float64')
-            
-        t1 = time.perf_counter()
+                #outputFrame = (outputFrame - np.min(outputFrame)).astype('uint8')   
+                inputFrame = inputFrame.astype('float64')
+                outputFrame = inputFrame - self.previousImage
+                if np.min(outputFrame) < - np.max(outputFrame):
+                    outputFrame = -1 * outputFrame
+                outputFrame[outputFrame < 0] = 0
+            self.previousImage = inputFrame.copy()
+        t1 = time.perf_counter()    
         outputFrame = self.pyb.process(outputFrame)
+        print(time.perf_counter() - t1)
         #print("Proc:" + str(time.perf_counter() - t1))
         #self.preProcessFrame = outputFrame
         #print(self.mosaicing)

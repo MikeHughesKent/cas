@@ -3,8 +3,9 @@
 Kent-CAS-GUI Example
 
 This examples shows how to extend CAS GUI to create a simple application
-to process and display images from a camera. The processing is performed
-using a separate process.
+to process and display images from a camera. In this example, the processing is 
+performed using a separate process, which should lead to an increase in the
+maximum achievable frame rate before frames are dropped.
 
 @author: Mike Hughes, Applied Optics Group, University of Kent
 

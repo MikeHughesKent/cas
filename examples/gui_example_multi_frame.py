@@ -61,7 +61,7 @@ class example_multi_GUI(CAS_GUI):
     # Path to resources
     resPath = "..//res"
     
-    multiCore = True
+    multiCore = False
 
     # GUI window title
     windowTitle = "Kent Camera Acquisition System: Multi Frame Example"
