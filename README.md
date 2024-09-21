@@ -43,9 +43,9 @@ for displaying scientific images.
 
 To create a GUI for a specific purpose, create a new class that inherits from 
 CAS_GUI in base.py. Three simple example are provided in the examples folder - 
-(gui_example)[https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example.py], 
-(gui_example_multi_frame)[https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example_multi_frame.py]
-and (gui_example_multi_core)[https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example_multi_core.py].
+[gui_example](https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example.py), 
+[gui_example_multi_frame](https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example_multi_frame.py)
+and [gui_example_multi_core](https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example_multi_core.py).
 
 gui_example demonstrates how a Gaussian smoothing filter can be applied to the 
 images grabbed from a camera, while the gui_example_multi_frame demonstrates 
@@ -54,8 +54,8 @@ that the processing is performed on a different core for improved speed using
 multiprocessing. These GUIs can be used as templates to begin building GUIs with 
 custom image processing pipelines.
 
-There is also an example of a more complex GUI, CAS_GUI_Bundle, 
-in the (subclasses)[https://github.com/MikeHughesKent/cas/blob/main/src/cas_gui/subclasses] folder, but this is not fully documented.
+There is also an example of a more complex GUI, [CAS_GUI_Bundle](https://github.com/MikeHughesKent/cas/blob/main/src/cas_gui/subclasses/cas_bundle.py), 
+in the subclasses folder, but this is not fully documented.
 
 
 ## Supported Cameras
