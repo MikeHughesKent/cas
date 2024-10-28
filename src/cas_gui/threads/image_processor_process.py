@@ -80,7 +80,6 @@ class ImageProcessorProcess(multiprocessing.Process):
             if self.updateQueue.qsize() > 0:
                 self.processor = self.updateQueue.get()
             
-            
             if self.processor is not None:            
                  
                 # Receive messages to call methods of the processor instance    

@@ -142,7 +142,7 @@ class CAS_GUI(QMainWindow):
         self.defaultIcon = os.path.join(self.resPath, self.iconFilename)
         self.recordFolder = Path.cwd().as_posix()
         
-        # Create the GUI. This is generally over-ridden in sub-classes
+        # Create the GUI. 
         self.create_layout()   
         self.set_colour_scheme()
         
@@ -173,7 +173,7 @@ class CAS_GUI(QMainWindow):
         self.move(frameGm.topLeft())        
                 
         # Make sure the display is correct for whatever camera source 
-        # we initiallylly have selected
+        # we initially have selected
         self.cam_source_changed()
         self.recordFolderLabel.setText(self.recordFolder)
         
@@ -483,6 +483,12 @@ class CAS_GUI(QMainWindow):
         self.sourceLayout.addWidget(QLabel('Camera Source'))
         self.sourceLayout.addWidget(self.camSourceCombo)
         self.camSourceCombo.currentIndexChanged.connect(self.cam_source_changed)
+        
+        self.cameraIDSpin = QSpinBox(objectName = 'cameraIDSpin')
+        self.cameraIDLabel = QLabel("Caemra No.:")
+        self.sourceLayout.addWidget(self.cameraIDLabel)
+        self.sourceLayout.addWidget(self.cameraIDSpin)
+        
 
         # Camera Settings Panel 
         self.camSettingsPanel = QWidget()
@@ -1101,7 +1107,7 @@ class CAS_GUI(QMainWindow):
                 self.cam = self.imageThread.get_camera()
                 self.cam.pre_load(-1)
         else:
-            self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock,imageQueue = self.inputQueue)
+            self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock,imageQueue = self.inputQueue, cameraID = self.cameraIDSpin.value())
             
 
 
@@ -1567,10 +1573,13 @@ class CAS_GUI(QMainWindow):
         visibility of relevant widgets
         """
         self.end_acquire()
-        if self.camSourceCombo.currentText() == 'File':
+        if self.camTypes[self.camSourceCombo.currentIndex()] == self.FILE_TYPE:
             self.end_acquire()
 
-            # Hide camera controls, show file widgets          
+            # Hide camera controls, show file widgets  
+            self.cameraIDSpin.hide()
+            self.cameraIDLabel.hide()
+
             self.inputFilePanel.show()
             self.camSettingsPanel.hide()
             self.liveButton.hide()
@@ -1580,7 +1589,11 @@ class CAS_GUI(QMainWindow):
         else:
            
             # Show camera controls, hide file widgets
+            self.cameraIDSpin.show()
+
             self.camSettingsPanel.show()
+            self.cameraIDLabel.show()
+
             self.liveButton.show()
             self.camStatusPanel.show()
             self.inputFilePanel.hide()

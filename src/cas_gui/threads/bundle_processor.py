@@ -74,7 +74,6 @@ class BundleProcessor(ImageProcessorClass):
             self.previousImage = inputFrame.copy()
         t1 = time.perf_counter()    
         outputFrame = self.pyb.process(outputFrame)
-        print(time.perf_counter() - t1)
         #print("Proc:" + str(time.perf_counter() - t1))
         #self.preProcessFrame = outputFrame
         #print(self.mosaicing)

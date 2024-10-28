@@ -21,12 +21,11 @@ import importlib
 class ImageAcquisitionThread(threading.Thread):
     
     def __init__(self, camName, bufferSize = 10, acquisitionLock = None, 
-                 imageQueue = None, auxillaryQueue = None, **camArgs):
+                 imageQueue = None, auxillaryQueue = None, cameraID = 0, **camArgs):
         
         # Caller passes the name of the camera class (which should be in a
         # module of the same name) in the variable camName. This is dynamically
         # imported here and an instance created as self.cam.
-       # print(f"acq {inputQueue}")
         
         try:
             moduleName = "cas_gui.cameras." + camName
@@ -46,7 +45,7 @@ class ImageAcquisitionThread(threading.Thread):
         self.acquisitionLock = acquisitionLock
         super().__init__()
                 
-        self.cam.open_camera(0)
+        self.cam.open_camera(cameraID)
         self._stop_event = threading.Event()
         
         self.bufferSize = bufferSize
@@ -242,7 +241,7 @@ class ImageAcquisitionThread(threading.Thread):
     def set_num_removal_when_full(self, num):
         """ Sets the number of images to be removed from the queue when the
         queue is full. By default this is 1, i.e. 1 image will be removed. In
-        some applications which acquire a sequency of images, it is usually
+        some applications which acquire a sequence of images, it is usually
         desirable to remove a full sequence of images.
         """
         self.numRemoveWhenFull = num
