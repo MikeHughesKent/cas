@@ -86,6 +86,7 @@ class CAS_GUI(QMainWindow):
     camTypes = [FILE_TYPE, SIM_TYPE, REAL_TYPE, REAL_TYPE, REAL_TYPE, REAL_TYPE, REAL_TYPE]
     
     # Other Options
+    restoreGUI = True
     manualImageTransfer = True
     fallBackToRaw = True
     multiCore = False
@@ -128,6 +129,7 @@ class CAS_GUI(QMainWindow):
     imageProcessor = None
     cam = None
     rawImage = None
+    buffering = False
     backgroundSource = ""
     recordBuffer = []
     imageId = 0
@@ -161,7 +163,8 @@ class CAS_GUI(QMainWindow):
     
         # Load last values for GUI from registry
         self.settings = QtCore.QSettings(self.authorName, self.appName)  
-        self.gui_restore()
+        if self.restoreGUI:
+            self.gui_restore()
             
         # Put the window in a sensible position
         self.resize(*self.windowSize)
@@ -485,7 +488,7 @@ class CAS_GUI(QMainWindow):
         self.camSourceCombo.currentIndexChanged.connect(self.cam_source_changed)
         
         self.cameraIDSpin = QSpinBox(objectName = 'cameraIDSpin')
-        self.cameraIDLabel = QLabel("Caemra No.:")
+        self.cameraIDLabel = QLabel("Camera ID No.:")
         self.sourceLayout.addWidget(self.cameraIDLabel)
         self.sourceLayout.addWidget(self.cameraIDSpin)
         
@@ -496,14 +499,14 @@ class CAS_GUI(QMainWindow):
         self.camSettingsPanel.setLayout(self.camSettingsLayout)
         self.exposureInput = QDoubleSpinBox(objectName = 'exposureInput')
         self.exposureInput.setMaximum(0)
-        self.exposureInput.setMaximum(100) 
+        self.exposureInput.setMaximum(10**6) 
         self.exposureInput.valueChanged[float].connect(self.exposure_slider_changed)
         self.exposureInput.setKeyboardTracking(False)
       
         self.exposureSlider = DoubleSlider(QtCore.Qt.Horizontal, objectName = 'exposureSlider')
         self.exposureSlider.setTickPosition(QSlider.TicksBelow)
         self.exposureSlider.setTickInterval(10)
-        self.exposureSlider.setMaximum(100)
+        self.exposureSlider.setMaximum(10**6)
         self.exposureSlider.doubleValueChanged[float].connect(self.exposureInput.setValue)
         
         self.gainSlider = QSlider(QtCore.Qt.Horizontal, objectName = 'gainSlider')
@@ -520,14 +523,14 @@ class CAS_GUI(QMainWindow):
        
         self.frameRateInput = QDoubleSpinBox(objectName = 'frameRateInput')
         self.frameRateInput.setMaximum(0)
-        self.frameRateInput.setMaximum(100)
+        self.frameRateInput.setMaximum(1000)
         self.frameRateInput.valueChanged[float].connect(self.frame_rate_slider_changed)
         self.frameRateInput.setKeyboardTracking(False)
 
         self.frameRateSlider = DoubleSlider(QtCore.Qt.Horizontal, objectName = 'frameRateSlider')
         self.frameRateSlider.setTickPosition(QSlider.TicksBelow)
         self.frameRateSlider.setTickInterval(100)
-        self.frameRateSlider.setMaximum(100)
+        self.frameRateSlider.setMaximum(1000)
         self.frameRateSlider.doubleValueChanged[float].connect(self.frameRateInput.setValue)
                 
         self.camSettingsLayout.addWidget(QLabel('Exposure:'))
@@ -869,7 +872,12 @@ class CAS_GUI(QMainWindow):
             self.currentProcessedImage = None         
             
         if self.recording:
-            self.record()    
+            self.record() 
+            
+        if self.buffering and self.imageThread is not None:
+            if self.imageThread.get_num_images_in_auxillary_queue() >= self.buffering_num_frames:
+                self.stop_buffering()
+                
             
             
 
@@ -1666,7 +1674,7 @@ class CAS_GUI(QMainWindow):
           if isinstance(obj, QLineEdit):
               name = obj.objectName()
               if self.settings.value(name) is not None:
-                  value = (self.settings.value(name).decode('utf-8'))  # get stored value from registry
+                  value = (self.settings.value(name))  # get stored value from registry
                   obj.setText(value)  
                   
           if isinstance(obj, QCheckBox):
@@ -1773,8 +1781,34 @@ class CAS_GUI(QMainWindow):
              self.recordFolder = folder
              self.recordFolderLabel.setText(self.recordFolder)
          else:
-             QMessageBox.about(self, "Error", "Invalid folder.")   
+             QMessageBox.about(self, "Error", "Invalid folder.") 
+             
+             
+    def start_buffering(self, num_frames, finish_call):
 
+        if self.imageProcessor is not None:
+            self.buffering = True
+            self.buffering_num_frames = num_frames
+            self.buffering_end_call = finish_call
+            self.imageThread.set_auxillary_queue_size(num_frames)
+            self.imageThread.flush_auxillary_buffer()
+            self.imageThread.set_use_auxillary_queue(True)
+        
+    def stop_buffering(self):
+        print("stop buffering")
+        self.buffering = False
+        self.imageThread.set_use_auxillary_queue(False)
+        if self.buffering_end_call is not None:
+            self.buffering_end_call()
+            
+    def get_auxillary_stack(self):
+        frames = []
+        for i in range(self.buffering_num_frames):
+            frames.append(self.imageThread.get_next_auxillary_image())  
+        return np.array(frames)    
+        
+
+        
 
 class NewStudyDialog(QDialog):
     """ Dialog box to create a new study."

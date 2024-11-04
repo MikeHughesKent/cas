@@ -397,6 +397,5 @@ class ImageProcessorThread(threading.Thread):
     def update_settings(self):
         """ Sends a copy of the processor class to the process running on
         another core. """
-        print("update")
-       # if self.updateQueue is not None:
-       #     self.updateQueue.put(self.processor)
+        if self.updateQueue is not None:
+            self.updateQueue.put(self.processor)

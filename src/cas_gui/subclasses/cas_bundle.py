@@ -65,11 +65,16 @@ class CAS_GUI_Bundle(CAS_GUI):
     windowTitle = "Fibre Bundle Imaging"
     
     resPath = "..\\..\\..\\res"
+    sourceFilename = r"..\..\..\tests\test_data\im1.tif"
+
 
 
     def __init__(self, parent=None):                      
         
         super(CAS_GUI_Bundle, self).__init__(parent)
+        
+        sourceFilename = r"..\..\..\tests\test_data\im1.tif"
+
         
         
         try:
@@ -406,52 +411,55 @@ class CAS_GUI_Bundle(CAS_GUI):
                    
         if self.imageProcessor is not None:
     
-            self.imageProcessor.pipe_message("pyb.gridSize", self.bundleGridSizeInput.value())
+            self.imageProcessor.get_processor().pyb.set_grid_size(self.bundleGridSizeInput.value())
             if self.bundleCoreMethodCombo.currentIndex() == 0:
-                self.imageProcessor.pipe_message("pyb.set_core_method", (self.imageProcessor.get_processor().pyb.FILTER))
+                self.imageProcessor.get_processor().pyb.set_core_method(self.imageProcessor.get_processor().pyb.FILTER)
             elif self.bundleCoreMethodCombo.currentIndex() == 1:
-                self.imageProcessor.pipe_message("pyb.set_core_method", (self.imageProcessor.get_processor().pyb.TRILIN))
+                self.imageProcessor.get_processor().pyb.set_core_method(self.imageProcessor.get_processor().pyb.TRILIN)
                 
-            self.imageProcessor.pipe_message("pyb.filterSize", self.bundleFilterSizeInput.value())
-            if self.bundleCropCheck.isChecked():
-                self.imageProcessor.pipe_message("crop", (self.bundleCentreXInput.value(), self.bundleCentreYInput.value(), self.bundleRadiusInput.value()))
-            else:
-                self.imageProcessor.pipe_message("crop", None)
+            self.imageProcessor.get_processor().pyb.set_filter_size(self.bundleFilterSizeInput.value())
+           # if self.bundleCropCheck.isChecked():
+           #     self.imageProcessor.pyb.crop = self.bundleCentreXInput.value(), self.bundleCentreYInput.value(), self.bundleRadiusInput.value())
+           # else:
+           #     self.imageProcessor.pipe_message("crop", None)
                 
-            self.imageProcessor.pipe_message("pyb.set_loc", ((self.bundleCentreXInput.value(), self.bundleCentreYInput.value(), self.bundleRadiusInput.value()),))
+            self.imageProcessor.get_processor().pyb.set_loc((self.bundleCentreXInput.value(), self.bundleCentreYInput.value(), self.bundleRadiusInput.value()))
            
             
-            self.imageProcessor.pipe_message("pyb.set_crop", self.bundleCropCheck.isChecked())
-            self.imageProcessor.pipe_message("pyb.set_auto_contrast", False)
+            self.imageProcessor.get_processor().pyb.set_crop(self.bundleCropCheck.isChecked())
+            self.imageProcessor.get_processor().pyb.set_auto_contrast(False)
+            
             if self.bundleMaskCheck.isChecked():
-                self.imageProcessor.pipe_message("pyb.set_apply_mask", True) 
-                self.imageProcessor.pipe_message("pyb.set_auto_mask", True)
+                self.imageProcessor.get_processor().pyb.set_apply_mask(True) 
+                self.imageProcessor.get_processor().pyb.set_auto_mask(True)
             else:
-                self.imageProcessor.pipe_message("pyb.set_apply_mask", False) 
-                self.imageProcessor.pipe_message("pyb.set_mask", None)
+                self.imageProcessor.get_processor().pyb.set_apply_mask(False) 
+                self.imageProcessor.get_processor().pyb.set_mask(None)
 
                 
             if self.bundleSubtractBackCheck.isChecked():
-                self.imageProcessor.pipe_message("pyb.set_background", self.backgroundImage)
+                self.imageProcessor.get_processor().pyb.set_background(self.backgroundImage)
             else:
-                self.imageProcessor.pipe_message("pyb.set_background", None)
+                self.imageProcessor.get_processor().pyb.set_background(None)
 
         
             if self.bundleNormaliseCheck.isChecked():
-                self.imageProcessor.pipe_message("pyb.set_normalise_image", self.backgroundImage)   
+                self.imageProcessor.get_processor().pyb.set_normalise_image(self.backgroundImage)   
             else:
-                self.imageProcessor.pipe_message("pyb.set_normalise_image", None)
+                self.imageProcessor.get_processor().pyb.set_normalise_image(None)
 
     
-            self.imageProcessor.pipe_message("pyb.outputType", 'float')
+            self.imageProcessor.get_processor().pyb.set_output_type('float')
             
             if self.bundleCoreMethodCombo.currentIndex() == FILTER:
-                self.imageProcessor.pipe_message("pyb.set_filter_size", self.bundleFilterSizeInput.value())   
+                self.imageProcessor.get_processor().pyb.set_filter_size(self.bundleFilterSizeInput.value())   
             elif self.bundleCoreMethodCombo.currentIndex() == INTERPOLATE:
-                self.imageProcessor.pipe_message("pyb.set_filter_size", self.bundleInterpFilterInput.value())  
+                self.imageProcessor.get_processor().pyb.set_filter_size(self.bundleInterpFilterInput.value())  
             
             
-            #self.imageProcessor.update_settings()    
+
+            # This sends all the settings to the process running the processing
+            self.imageProcessor.update_settings()    
                                     
             # If we are processing a single file, we should make sure this
             # gets updated now that we have changed the processing options. If we
@@ -479,6 +487,10 @@ class CAS_GUI_Bundle(CAS_GUI):
             self.bundleCentreXInput.setValue(loc[0])
             self.bundleCentreYInput.setValue(loc[1])
             self.bundleRadiusInput.setValue(loc[2])
+            if self.imageProcessor is not None:
+                self.imageProcessor.update_settings()
+
+            
              
         else:
             QMessageBox.about(self, "Error", "Cannot find bundle, there is no image to analyse.")    
@@ -495,14 +507,15 @@ class CAS_GUI_Bundle(CAS_GUI):
         if self.backgroundImage is not None and self.imageProcessor is not None:
             
             QApplication.setOverrideCursor(Qt.WaitCursor)
-            self.imageProcessor.pipe_message("pyb.set_calib_image", self.backgroundImage)
-            self.imageProcessor.pipe_message("pyb.set_background", self.backgroundImage)
-            self.imageProcessor.pipe_message("pyb.set_normalise_image", self.backgroundImage)
-            self.imageProcessor.pipe_message("pyb.calibrate", ())
+            self.imageProcessor.get_processor().pyb.set_calib_image(self.backgroundImage)
+            self.imageProcessor.get_processor().pyb.set_background(self.backgroundImage)
+            self.imageProcessor.get_processor().pyb.set_normalise_image(self.backgroundImage)
+            self.imageProcessor.get_processor().pyb.calibrate()
+            self.imageProcessor.update_settings()
             QApplication.restoreOverrideCursor()
 
         else:
-            QMessageBox.about(self, "Error", "Calibration requires both a current image and a background image")  
+            QMessageBox.about(self, "Error", "Calibration requires both a current image and a background image.")  
         
         self.processing_options_changed()
         
@@ -513,7 +526,7 @@ class CAS_GUI_Bundle(CAS_GUI):
         
         
     def save_calibration(self):    
-        self.imageProcessor.pipe_message("pyb.save_calibration", 'calib.dat')
+        self.imageProcessor.get_processor().pyb.save_calibration('calib.dat')
 
 
         
@@ -522,13 +535,12 @@ class CAS_GUI_Bundle(CAS_GUI):
         
     
     def load_calibration(self):
-        with open('calib.dat', 'rb') as pickleFile:
-            self.imageProcessor.pipe_message("pyb.calibration", pickle.load(pickleFile))
+        self.imageProcessor.get_processor().pyb.load_calibration('calib.dat')
         self.processing_options_changed()
         
     
     def reset_mosaic_clicked(self):
-        self.imageProcessor.mosaic.reset()
+        self.imageProcessor.get_processor().mosaic.reset()
         
 
     def mosaic_options_changed(self):

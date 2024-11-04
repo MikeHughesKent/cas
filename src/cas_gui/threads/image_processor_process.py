@@ -146,6 +146,7 @@ class ImageProcessorProcess(multiprocessing.Process):
                             if self.sharedMemory is None:
 
                                 temp = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32')
+                                print(np.shape(temp))
                                 try:
                                     self.sharedMemory = multiprocessing.shared_memory.SharedMemory(create=True, size=temp.nbytes, name = "CASShare")
                                 except:

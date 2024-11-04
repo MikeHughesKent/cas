@@ -51,21 +51,11 @@ class BundleProcessor(ImageProcessorClass):
 
                 
     def process(self, inputFrame):
-        #print("Processing frame")
         outputFrame = inputFrame
 
         if self.dualMode:
-            #print(self.dualMode)
+
             if self.previousImage is not None:
-            #    way = bool(np.mean(self.previousImage) > np.mean(inputFrame))
-                #print(np.mean(self.previousImage))
-                #print(np.mean(inputFrame))
-               # if way is False:
-               #     outputFrame = inputFrame.astype('float64') - self.previousImage
-               # else:
-               #     outputFrame = self.previousImage - inputFrame.astype('float64')
-                #print(np.mean(outputFrame))
-                #outputFrame = (outputFrame - np.min(outputFrame)).astype('uint8')   
                 inputFrame = inputFrame.astype('float64')
                 outputFrame = inputFrame - self.previousImage
                 if np.min(outputFrame) < - np.max(outputFrame):

@@ -88,7 +88,7 @@ class ImageAcquisitionThread(threading.Thread):
                 if self.imageQueue.full():
                     if self.acquisitionLock is not None: self.acquisitionLock.acquire()
 
-                    # Check for full queues
+                    # Check for full queue
                     for idx in range(self.numRemoveWhenFull):
                         if self.imageQueue.qsize() > 0:
                             self.numDroppedFrames += 1
@@ -97,13 +97,6 @@ class ImageAcquisitionThread(threading.Thread):
                     if self.acquisitionLock is not None: self.acquisitionLock.release()
         
                 
-                if self.auxillaryQueue.full():
-            
-                    for idx in range(self.numRemoveWhenFull):
-                        if self.auxillaryQueue.qsize() > 0:
-                            self.numAuxillaryDroppedFrames += 1
-                            temp = self.auxillaryQueue.get()        
-                           
 
                 # Try to get an image. If there is no image ready, this should
                 # return None.
@@ -113,7 +106,7 @@ class ImageAcquisitionThread(threading.Thread):
 
                     self.currentFrameNumber = self.currentFrameNumber + 1
                     self.imageQueue.put(frame)
-                    if self.useAuxillaryQueue:
+                    if self.useAuxillaryQueue and (not self.auxillaryQueue.full()):
                         self.auxillaryQueue.put(frame) 
                     self.currentFrame = frame
                     self.currentFrameTime = time.perf_counter()
