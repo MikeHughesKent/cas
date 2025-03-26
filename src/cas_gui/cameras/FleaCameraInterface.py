@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Kent-CAS: Camera Acquisition System
+CAS: Camera Acquisition System
 
-Camera interface for Flea Camera.
-
-Mike Hughes, Applied Optics Group, University of Kent
+Camera interface for Flea Cameras (may also work for other FLIR cameras).
 
 """
 
 import time
 import warnings
-  
 
 import PySpin
 
@@ -47,8 +44,7 @@ class FleaCameraInterface(GenericCameraInterface):
     def __init__(self):        
         self.system = PySpin.System.GetInstance()
         self.camList = self.system.GetCameras()
-        self.nCameras = self.camList.GetSize()
-        
+        self.nCameras = self.camList.GetSize()        
         self.cams = self.camList
             
         
@@ -75,7 +71,6 @@ class FleaCameraInterface(GenericCameraInterface):
 
         else:
 
-            print("Camera not available.")
             return False
 
                 
@@ -97,7 +92,6 @@ class FleaCameraInterface(GenericCameraInterface):
 
         # Check node is writeable
         if not PySpin.IsAvailable(node) or not PySpin.IsWritable(node):
-            print('Unable to write to this node.')
             return False
         
         # Get value we want to set
@@ -105,7 +99,6 @@ class FleaCameraInterface(GenericCameraInterface):
         
         # Check this value can be written
         if not PySpin.IsAvailable(nodeEntry) or not PySpin.IsReadable(nodeEntry):
-            print('Unable to write this value.')
             return False
         
         nodeEntryValue = nodeEntry.GetValue()
@@ -324,7 +317,7 @@ class FleaCameraInterface(GenericCameraInterface):
                 return True
             except:
                 return False
-                print(f"FleaCameraInterface: Cannot set gain value of {gain}.")
+
             return True
         else:
             return False 
@@ -341,19 +334,23 @@ class FleaCameraInterface(GenericCameraInterface):
         
 
 if __name__ == "__main__":
+    
+    ### Performs a test acquisition
     cams = FleaCameraInterface()
     cams.init()
     cam = cams.open(0)
+    
     if cam != False:
     
         cam.set_frame_rate(60)
-        print(cam.get_exposure())
-        print(cam.get_frame_rate())
+        print(f"Exposure: {cam.get_exposure()}")
+        print(f"Frame Rate: {cam.get_frame_rate()}")
         t1 = time.time()
         for i in range(120):
             im = cam.get_image()
         t2 = time.time()
-        print(t2-t1)
+        print(f"Time to get 120 frames: {t2-t1}")
         cam.dispose()  
         del(cam)
+    
     cams.deInit()

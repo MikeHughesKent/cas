@@ -7,9 +7,6 @@ Threading class for image processing for use in GUIs or or
 multi-threading applications. Sub-class and implement process_frame
 to make a custom image processor.
 
-@author: Mike Hughes
-Applied Optics Group
-University of Kent
 """
 
 import queue
@@ -30,7 +27,7 @@ class ImageProcessorThread(threading.Thread):
     sharedMemoryArray = None
     inputSharedMemory = None
     imSize = (0,0)
-    lastImNum = -1
+    lastImNum = -1  
     numDropped = 0
     
     def __init__(self, processor, inBufferSize, outBufferSize, **kwargs):
@@ -49,12 +46,6 @@ class ImageProcessorThread(threading.Thread):
         self.multiCore = kwargs.get('multiCore', False)
         self.useSharedMemory = kwargs.get('sharedMemory', False)        
         self.sharedMemoryArraySize = kwargs.get('sharedMemoryArraySize', (2048, 2048))
-
-        #if self.inputQueue is None:
-            #if self.multiCore:
-               # self.inputQueue = multiprocessing.Queue(maxsize=self.inBufferSize)
-            #else:
-            #    self.inputQueue = queue.Queue(maxsize=self.inBufferSize)
 
         if self.multiCore and not self.useSharedMemory:                
             self.outputQueue = multiprocessing.Queue(maxsize=self.outBufferSize)
@@ -86,11 +77,13 @@ class ImageProcessorThread(threading.Thread):
                 outQueue = None
             else:
                 outQueue = self.outputQueue
+                
+            self.shareName = str(np.random.randint(6400000, size = 1)[0])
             
             # Create the process and set it running
             self.process = ImageProcessorProcess(self.inputQueue, outQueue, self.updateQueue, 
                                                  self.messageQueue, sharedMemoryArraySize = self.sharedMemoryArraySize, 
-                                                 useSharedMemory = self.useSharedMemory, statusQueue = self.statusQueue)
+                                                 useSharedMemory = self.useSharedMemory, statusQueue = self.statusQueue, shareName = self.shareName)
             self.process.start()
             time.sleep(0.1)
             self.updateQueue.put(self.processor)
@@ -112,9 +105,9 @@ class ImageProcessorThread(threading.Thread):
                      if self.sharedMemory is None:
                          temp = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32')
                          try:
-                             self.sharedMemory = multiprocessing.shared_memory.SharedMemory(create=True, size=temp.nbytes, name = "CASShare")
+                             self.sharedMemory = multiprocessing.shared_memory.SharedMemory(create=True, size=temp.nbytes, name = self.shareName)
                          except:
-                             self.sharedMemory = multiprocessing.shared_memory.SharedMemory(size=temp.nbytes, name = "CASShare")
+                             self.sharedMemory = multiprocessing.shared_memory.SharedMemory(size=temp.nbytes, name = self.shareName)
 
                          #try:
                              #self.sharedMemory = multiprocessing.shared_memory.SharedMemory(name="CASShare")
@@ -229,11 +222,14 @@ class ImageProcessorThread(threading.Thread):
 
                 
     def get_processor(self):
+        """ Returns reference to processor object"""
         return self.processor
      
         
 
     def process_frame(self, inputFrame):
+        """ Processes a single frame and return processed frame. Both are
+        numpy arrays"""
         
         ret = self.processor.process(inputFrame) 
         return ret
@@ -264,8 +260,7 @@ class ImageProcessorThread(threading.Thread):
     
     def is_image_ready(self):
         """ Returns true if there is a new processed image ready to be read.
-        """
-             
+        """             
         if self.get_num_images_in_output_queue() > 0:
             return True
         else:
@@ -295,13 +290,7 @@ class ImageProcessorThread(threading.Thread):
         
         return im
             
-    
-    
-  #  def get_inter_frame_time(self):
-   #     """ Returns time betwee
-   #     return self.frameStepTime
         
-    
     def get_actual_fps(self):
         """ Returns the processing frame rate.
         """
@@ -391,7 +380,9 @@ class ImageProcessorThread(threading.Thread):
         """
         self.isStarted = False
         if self.process is not None:
+            print("Terminating process")
             self.process.terminate()
+            self.process.join()
 
   
     def update_settings(self):

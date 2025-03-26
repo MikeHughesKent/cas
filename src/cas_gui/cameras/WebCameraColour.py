@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Extends WebCamera to return colour images.
+CAS: Camera Acquisition System
 
-@author: Mike Hughes, Applied Optics Group, University of Kent
+A camera interface that extends WebCamera to return colour images.
+
 """
 
 import cv2 as cv
@@ -16,7 +17,6 @@ class WebCameraColour(WebCamera):
 
           
     def grab_image(self):
-        print("grab")
         
         rval, imageData = self.vc.read()
         imageData = cv.cvtColor(imageData, cv.COLOR_BGR2RGB)

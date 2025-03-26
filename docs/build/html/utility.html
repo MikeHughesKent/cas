@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Utility Functions &mdash; CAS-GUI 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            CAS-GUI
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="menus.html">Adding Menus and Menu Items</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CAS-GUI</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Utility Functions</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/utility.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="utility-functions">
+<h1>Utility Functions<a class="headerlink" href="#utility-functions" title="Permalink to this heading"></a></h1>
+<p>The CAS_GUI class contains a number of utility function that may be useful
+to call directly.
+To run the image processing on a separate core, we set the parameter:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">multiCore</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>CAS-GUI will then handle starting a process. For very simple processors,
+which do not require changes of parameters or calibration, this is all that
+is required.</p>
+<p>CAS-GUI first creates an instance of the image processor class on the local
+proces and then pipes it to the other process via a queue. This means that any
+subsequent changes to the local copy of the image processor class will not be
+reflected in the copy in the other process. It is necessary to call the
+<code class="docutils literal notranslate"><span class="pre">update_settings()</span></code> method of the instance of <code class="docutils literal notranslate"><span class="pre">ImageProcessorThread</span></code> a
+reference to which is stored in the <code class="docutils literal notranslate"><span class="pre">self.processor</span></code> parameter. Therefore, following
+any change of settings, you should call:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">processor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">processor</span><span class="o">.</span><span class="n">update_settings</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The easiest way to handle this is to have a single function that handles all
+changes in settings-related widgets, allowing this to be called once after
+all changes have been made. A check that <code class="docutils literal notranslate"><span class="pre">self.processor</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">None</span></code> should
+always be made because the processor is only instantiated when acquisition begins.</p>
+<p><code class="docutils literal notranslate"><span class="pre">update_settings()</span></code> is a reasonably slow function, since the entire <code class="docutils literal notranslate"><span class="pre">ImageProcessorThread</span></code>
+must be pickled, piped to the other process, and depickled. Although this is not noticeable
+for occasional dicrete settings changes, it may becomes obvious if the user is able
+to continuously adjust some setting and observe the results (e.g. by dragging a slider).
+A faster way to update settings on both the local and other copy of the Image Processor Class
+is to to use <code class="docutils literal notranslate"><span class="pre">pipe_message()</span></code>. This takes two arguments, the first is the name of a method
+of the Image Processor Class to call, and the second is a tuple of arguments to pass to this method.
+This means that setter methods can be created in the Image Processor Class to handle and settings
+changes that need to be made rapidly.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mike Hughes.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

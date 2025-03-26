@@ -1,0 +1,132 @@
+Getting Started
+===============
+
+The base class for all CAS GUI based GUIs is CAS_GUI which can be found in the src/cas_gui/base.py file. 
+Running this file will create an instance of the base class which can be used as a simple camera viewer,
+with save and record capabilities. Run this first to ensure that CAS and CAS GUI are correctly 
+installed on your system.
+
+The camera source can be selected by opening the 'Image Source' menu and selecting the desired
+camera from the drop-down menu. 'Simulated camera' will display a sequence of frames containg
+the digits 0-9 and should be tested first. 
+
+For custom GUIs, the base class is sub-classed and methods are overridden as required. There are a number of
+helper functions to simplify the process of adding GUI elements. 
+
+A Simple Custom GUI
+^^^^^^^^^^^^^^^^^^^
+
+To implement a custom GUI, CAS GUI is sub-classed. A bare-bones example is as follows::
+
+    import sys
+    from PyQt5.QtWidgets import QApplication
+    from cas_gui.base import CAS_GUI
+
+
+    class example_GUI(CAS_GUI):
+        resPath = "..\\res"     
+        sourceFilename = r"data/vid_example.tif"  
+        
+        
+    if __name__ == '__main__':    
+               
+        # Create and display GUI
+        app = QApplication(sys.argv)     
+        window = example_GUI()
+        window.show()
+         
+        # When the window is closed, close everything
+        sys.exit(app.exec_())
+         
+This will create an exact clone of CAS GUI with no additional functionality. Note that CAS_GUI is a subclass
+of a PyQT ``QMainWindow`` and so maintains all the functionality of that class.
+
+We must specify the path to the resources, including icons etc, and the example simulated camera data.
+
+One of the first things we might like to do is change the name of the window. We do this 
+by adding the init() methods, calling the superclass init() and then setting the window title using::
+
+    def __init__(self):
+        super().__init__()
+        windowTitle = "My example GUI"
+    
+Of course you could also directly change the window title directly by calling ``example_GUI.setWindowTitle()``, but in general
+it is better to use the abstracted approach where possible to avoid needing to understand details of the CAS_GUI implementation (which may change in future versions).
+
+It is also useful at this point to set two additional parameters::
+
+    authorName = "Me"
+    appName = "My Example GUI"
+    
+Setting unique values here will mean that any settings saved by your GUI will be distinct from settings saved by other GUIs based on CAS GUI on the same machine.
+ 
+Adding Processing
+^^^^^^^^^^^^^^^^^ 
+    
+To perform real-time processing on the image, we need to create a processor class that inherits from ``ImageProcessorClass``. As a minimum, the ``process`` method must be implemented.
+This takes the raw image as the first parameter and returns the processed image. We specify the name of the class using::
+
+    processor = name
+    
+where name is a reference to the class (not an instance of the class - an instance will be created by CAS GUI).    
+    
+A minimal fully-working examples that simply flips the images is given below. 
+Note that we have imported ``ImageProcessorClass`` and also ```numpy`` since images in CAS_GUI are, by default, stored as 2D or 3D numpy arrays.
+
+We created a ``MyProcessorClass`` which inherits from ``ImageProcessorClass`` and have implemented the ``process`` method which will be called by the GUI every time an image requires processing. This must take
+a single parameter, the raw image, and return the processed image.::
+
+    import sys
+    
+    import numpy as np
+    from PyQt5.QtWidgets import QApplication
+    
+    from cas_gui.base import CAS_GUI
+    from cas_gui.threads.image_processor_class import ImageProcessorClass
+    
+    class MyProcessorClass(ImageProcessorClass):
+        
+        def process(self, inputImage):
+            return np.fliplr(inputImage)
+        
+    class example_GUI(CAS_GUI):
+        windowTitle = "My example GUI"
+        processor = MyProcessorClass
+         
+    if __name__ == '__main__':    
+                
+         # Create and display GUI
+         app = QApplication(sys.argv)     
+         window = example_GUI()
+         window.show()
+          
+         # When the window is closed, close everything
+         sys.exit(app.exec_())    
+
+Running this example will result in a flipped image being shown in the GUI.
+
+If we would like to control parameters of the processing from the GUI, we can directly change member variables or call methods of the 
+processor class. In the example_GUI class, a reference to the processor class is stored in the ``self.processor`` parameter. For example, if we
+Therefore, if we change the processor to have a Boolean flag, ``flip``, which controls whether the image is flipped or not::
+
+    class MyProcessorClass(ImageProcessorClass):
+        flip = False
+        def process(self, inputImage):
+            if self.flip:
+                return np.fliplr(inputImage)
+            else:
+                return inputImage
+
+Then we can control this from the GUI by adding a checkbox to the GUI and connecting it to a method that changes the value of the flip flag, which
+can be accessed as ``self.processor.flip``. However, it is always advisable to check that the processor has been created (and is not ``None``), so, for example, if we had a checkbox called ``flipCheckBox`` that was connected to a method called ``flipImage``::
+
+    def flipImage(self):
+        if self.processor is not None:
+            self.processor.flip = self.flipCheckBox.isChecked()
+
+Details of how to add GUI elements, such as checkboxes, are given in the 'Menus' section.
+
+The image processing will run in a separate thread from both the GUI and
+the image acquisition loop, but on the same processsor core (i.e. the same process). See the 
+'Multicore' section for details on how to run the processing on a separate core, and for a different procedure to update settings in the processor class.   
+

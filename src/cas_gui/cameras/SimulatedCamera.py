@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
+CAS: Camera Acquisition System
+
 Simulated camera interface for Camera Acquisition Based GUIs. Loads images
 from a file (image or video).
-
-Mike Hughes, Applied Optics Group, University of Kent
 
 """
 
@@ -12,16 +12,13 @@ from PIL import Image, ImageSequence
 import numpy as np
 import time
 
-class SimulatedCamera(GenericCameraInterface):
-    
+class SimulatedCamera(GenericCameraInterface):    
     
     preLoaded = False
     currentFrame = 0
-    dtype = 'uint16'
-   
+    dtype = 'uint16'   
     
-    def __init__(self, **kwargs): 
-        
+    def __init__(self, **kwargs):         
         
         self.filename = kwargs.get('filename', None)
         self.lastImageTime = time.perf_counter()
@@ -29,7 +26,10 @@ class SimulatedCamera(GenericCameraInterface):
         self.fps = 10
         self.frameRateEnabled = False
         if self.filename is not None:
-            self.dataset = Image.open(self.filename)
+            try:
+                self.dataset = Image.open(self.filename)
+            except:
+                self.dataset = None
 
                    
         
@@ -42,38 +42,41 @@ class SimulatedCamera(GenericCameraInterface):
      
         
     def open_camera(self, camID):  
-        self.dataset = Image.open(self.filename)
-        self.camera_open = True
-
+        if self.filename is not None:
+            try:
+                self.dataset = Image.open(self.filename)
+                self.camera_open = True
+            except:
+                self.dataset = None
+                self.camera_open = False
                
                 
     def close_camera(self):
-        pass
+        self.camera_open = False
     
         
     def dispose(self):
         self.dataset.close()
-        pass
     
     
     def pre_load(self, nImages):
-        # Pre-Loads nImages into memory, avoiding file read timing slowing
-        # down apparent frame rate
-        print("Pre-loading images ...")
-        h = np.shape(self.dataset)[0]
-        w = np.shape(self.dataset)[1]
         
-        if nImages > 0:
-            framesToLoad = min(nImages, self.dataset.n_frames)
-        else:
-            framesToLoad = self.dataset.n_frames
-        self.imageBuffer = np.zeros((h,w,framesToLoad), dtype = self.dtype)
-
-        for i in range(framesToLoad):
-            self.dataset.seek(i)
-            self.imageBuffer[:,:,i] = np.array(self.dataset).astype(self.dtype)
-        self.preLoaded = True
-        print("Images Pre-loaded")
+        if self.dataset is not None:
+            # Pre-Loads nImages into memory, avoiding file read timing slowing
+            # down apparent frame rate
+            h = np.shape(self.dataset)[0]
+            w = np.shape(self.dataset)[1]
+            
+            if nImages > 0:
+                framesToLoad = min(nImages, self.dataset.n_frames)
+            else:
+                framesToLoad = self.dataset.n_frames
+            self.imageBuffer = np.zeros((h,w,framesToLoad), dtype = self.dtype)
+    
+            for i in range(framesToLoad):
+                self.dataset.seek(i)
+                self.imageBuffer[:,:,i] = np.array(self.dataset).astype(self.dtype)
+            self.preLoaded = True
 
 
 
@@ -85,52 +88,50 @@ class SimulatedCamera(GenericCameraInterface):
        # Either loads the next image from the file or, if we have pre-loaded,
        # copies the image from memory. Returns the image.
        
+       imData = None
        
-       # Calculate delay needed to simulate desired frame rate
-       if self.fps > 0:
-           desiredWait = 1/self.fps
-       else:
-           desiredWait = 100000
-       currentTime = time.perf_counter()
-       waitNeeded = desiredWait - (currentTime - self.lastImageTimeAdjusted)
-       
-       # Only return an image if enough time has passed since the last image
-       # to match the frame rate, otherwise return None
-       if waitNeeded < 0:
-           self.lastImageTime = time.perf_counter()
-           
-           # We keep a record of the last time minus the wait needed. This way,
-           # when we have waited too long (i.e. waitNeeded << 0) we add something
-           # to the lastImageTimeAdjusted which has the effect of making the next
-           # wait needed shorter. This leads to a more accurate frame rate.
-           if waitNeeded > -desiredWait:
-               self.lastImageTimeAdjusted = self.lastImageTime - waitNeeded
-           else:
-               self.lastImageTimeAdjusted = self.lastImageTime
-               
-           # If we were paused then this might lead toa huge wait time, we never
+       if self.dataset is not None:    
 
-           if self.preLoaded:
-            
-               if self.currentFrame >= np.shape(self.imageBuffer)[2]:
-                   self.currentFrame = 0
-               imData = self.imageBuffer[:,:,self.currentFrame].astype(self.dtype)
-               
+           # Calculate delay needed to simulate desired frame rate
+           if self.fps > 0:
+               desiredWait = 1/self.fps
            else:
+               desiredWait = 100000
+           currentTime = time.perf_counter()
+           waitNeeded = desiredWait - (currentTime - self.lastImageTimeAdjusted)
+           
+           # Only return an image if enough time has passed since the last image
+           # to match the frame rate, otherwise return None
+           if waitNeeded < 0:
+               self.lastImageTime = time.perf_counter()
+               
+               # We keep a record of the last time minus the wait needed. This way,
+               # when we have waited too long (i.e. waitNeeded << 0) we add something
+               # to the lastImageTimeAdjusted which has the effect of making the next
+               # wait needed shorter. This leads to a more accurate frame rate.
+               if waitNeeded > -desiredWait:
+                   self.lastImageTimeAdjusted = self.lastImageTime - waitNeeded
+               else:
+                   self.lastImageTimeAdjusted = self.lastImageTime
                    
-               if self.currentFrame > self.dataset.n_frames - 1:
-                   self.currentFrame = 0
-               
-               self.dataset.seek(self.currentFrame)
-               imData = np.array(self.dataset.getdata()).reshape(self.dataset.size[1], self.dataset.size[0]).astype(self.dtype)
-
-           self.currentFrame = self.currentFrame + 1
-           self.actualFrameRate = 1/(time.perf_counter() - self.lastImageTime)     
-       
-       else:
+               if self.preLoaded:
+                
+                   if self.currentFrame >= np.shape(self.imageBuffer)[2]:
+                       self.currentFrame = 0
+                   imData = self.imageBuffer[:,:,self.currentFrame].astype(self.dtype)
+                   
+               else:
+                       
+                   if self.currentFrame > self.dataset.n_frames - 1:
+                       self.currentFrame = 0
+                   
+                   self.dataset.seek(self.currentFrame)
+                   imData = np.array(self.dataset.getdata()).reshape(self.dataset.size[1], self.dataset.size[0]).astype(self.dtype)
+    
+               self.currentFrame = self.currentFrame + 1
+               self.actualFrameRate = 1/(time.perf_counter() - self.lastImageTime)     
            
-            imData = None
-      
+             
        return imData
     
     

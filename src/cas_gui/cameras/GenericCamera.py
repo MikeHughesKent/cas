@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Kent-CAS: Camera Acquisition System
-Generic camera interface for Camera Acquisition Based GUIs.
 
-Mike Hughes, Applied Optics Group, University of Kent
+Generic camera interface for Camera Acquisition Based GUIs. Other
+cameras should inherit from this and implement whatever methods
+are required.
 
 """
-  
                 
         
 class GenericCameraInterface:
@@ -14,8 +14,7 @@ class GenericCameraInterface:
     camera_open = False
     
     def __init__(self):        
-        pass
-            
+        pass            
         
     def get_camera_list(self):
         pass        
@@ -31,8 +30,7 @@ class GenericCameraInterface:
                
     def get_image(self):
         pass
-    
-    
+        
     def is_camera_open(self):
         return self.camera_open
     
@@ -50,9 +48,7 @@ class GenericCameraInterface:
         return None
                     
     def get_nodes(self):
-        return None
-
-    
+        return None    
     
     ###### Frame Rate
     def set_frame_rate_on(self):
@@ -72,7 +68,6 @@ class GenericCameraInterface:
     
     def get_measured_frame_rate(self):
         return 0 
-
 
 
     ##### Exposure

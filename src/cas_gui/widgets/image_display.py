@@ -38,6 +38,8 @@ class ImageDisplay(QLabel):
    GRAPH = 2
     
    mouseMoved = pyqtSignal(int, int)
+   roiChanged = pyqtSignal()  
+
 
    imageSize = (0,0)
    
@@ -102,6 +104,8 @@ class ImageDisplay(QLabel):
    roi = None
    
    lastFrameTime = 0
+
+
    
    
    def __init__(self, **kwargs):
@@ -189,6 +193,9 @@ class ImageDisplay(QLabel):
                self.roi = int(round(min(self.dragX, self.dragToX))), int(round(min(self.dragY, self.dragToY))), int(round(max(self.dragX, self.dragToX))), int(round(max(self.dragY, self.dragToY)))
            else:
                self.roi = None
+           self.roiChanged.emit()
+           
+            
        self.panning = False
        
        

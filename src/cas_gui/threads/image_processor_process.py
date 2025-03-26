@@ -26,8 +26,6 @@ This allows a controller or GUI running in a different process to change
 parameters of the processing by updating the processor object and passing
 it to the process that ImageProcessorProcess is running in via the updateQueue.
 
-@author: Mike Hughes, Applied Optics Group, University of Kent
-
 """
 
 import queue
@@ -47,7 +45,7 @@ class ImageProcessorProcess(multiprocessing.Process):
     imSize = (0,0)
     imCounter = 0
     
-    def __init__(self, inQueue, outQueue, updateQueue, messageQueue, useSharedMemory = False, sharedMemoryArraySize = (2048,2048), statusQueue = None):
+    def __init__(self, inQueue, outQueue, updateQueue, messageQueue, useSharedMemory = False, sharedMemoryArraySize = (2048,2048), statusQueue = None, shareName = "CASShare"):
         
         super().__init__()          
                       
@@ -58,6 +56,7 @@ class ImageProcessorProcess(multiprocessing.Process):
         self.messageQueue = messageQueue
         self.useSharedMemory = useSharedMemory
         self.sharedMemoryArraySize = sharedMemoryArraySize
+        self.shareName = shareName
 
         
         self.lastFrameTime = 0
@@ -126,7 +125,7 @@ class ImageProcessorProcess(multiprocessing.Process):
                     else:
                         self.imageId = 0
                         outImage = ret
-                        
+                    #print(f"process: out size {np.shape(outImage)}")    
                     
                     
                     if not self.useSharedMemory:                   
@@ -146,12 +145,10 @@ class ImageProcessorProcess(multiprocessing.Process):
                             if self.sharedMemory is None:
 
                                 temp = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32')
-                                print(np.shape(temp))
                                 try:
-                                    self.sharedMemory = multiprocessing.shared_memory.SharedMemory(create=True, size=temp.nbytes, name = "CASShare")
+                                    self.sharedMemory = multiprocessing.shared_memory.SharedMemory(create=True, size=temp.nbytes, name = self.shareName)
                                 except:
-                                    self.sharedMemory = multiprocessing.shared_memory.SharedMemory(size=temp.nbytes, name = "CASShare")
-                                print("Shared memory created.")    
+                                    self.sharedMemory = multiprocessing.shared_memory.SharedMemory(size=temp.nbytes, name = self.shareName)
                                 self.sharedMemoryArray = np.ndarray(self.sharedMemoryArraySize, dtype = 'float32', buffer = self.sharedMemory.buf)
                                 self.sharedMemorySize = outImage.nbytes
                                 
@@ -177,7 +174,8 @@ class ImageProcessorProcess(multiprocessing.Process):
                     #print(self.frameStepTime, time.perf_counter() - t0)
 
     def get_num_images_in_input_queue(self):
-         return self.inputQueue.qsize()
+        """ Returns number of images in raw image queue"""
+        return self.inputQueue.qsize()
       
     def set_batch_process_num(self, num):
         """ Sets the size of the batch of images to be sent to the processor.

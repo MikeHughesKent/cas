@@ -1,21 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Jun 20 07:28:31 2021
+CAS: Camera Acquisition System
 
-@author: AOG
+Camera interface for webcameras, returning monochrome images. Uses OpenCV.
 """
 
-import cv2 as cv
 import time
 
 import numpy as np
+import cv2 as cv
+
 from cas_gui.cameras.GenericCamera import GenericCameraInterface  
     
         
-class WebCamera(GenericCameraInterface):
-
-    
-   
+class WebCamera(GenericCameraInterface):    
+  
     
     def __init__(self):
         
@@ -23,8 +22,7 @@ class WebCamera(GenericCameraInterface):
         self.lastImageTimeAdjusted = self.lastImageTime
         self.fps = 20
         self.frameRateEnabled = True
-        self.exposure = -10
-        
+        self.exposure = -10        
         
         
     def get_camera_list(self):
@@ -32,7 +30,6 @@ class WebCamera(GenericCameraInterface):
         
         
     def open_camera(self, camNum):
-        print(camNum)
         self.vc = cv.VideoCapture(camNum)
         self.camera_open = True
 
@@ -42,15 +39,11 @@ class WebCamera(GenericCameraInterface):
         
     def dispose(self):
         pass               
-        
-   
+           
 
     def get_image(self):
-       # Either loads the next image from the file or, if we have pre-loaded,
-       # copies the image from memory. Returns the image.
-       
-       
-       # Calculate delay needed to simulate desired frame rate
+    
+       # Calculate delay needed to achieve desired frame rate
        if self.fps > 0:
            desiredWait = 1/self.fps
        else:
@@ -97,7 +90,6 @@ class WebCamera(GenericCameraInterface):
         return self.vc.get(cv.CAP_PROP_EXPOSURE)
         
     def get_exposure_range(self):
-        #r = self.camera.exposure_time_range_us        
         return -10,0
    
     def set_exposure(self, exposure):

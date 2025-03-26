@@ -1,22 +1,28 @@
 # -*- coding: utf-8 -*-
 """
-Kent-CAS-GUI Example of Multiple Image Processing
+CAS GUI: Example of Multiple Image Processing
 
 This example shows how to extend CAS GUI to create a simple application
-to process and display a stack of images from a camera.
+to process and display a stack of images from a camera by averging them.
 
-@author: Mike Hughes, Applied Optics Group, University of Kent
+For this to work we have to: 
+    
+1. Sub-class imageProcessor to create a custom processing algorithm by implementing 'process()'
+2. Use set_batch_process_num() to tell the processor how many image to collect
+   before running  'process()''
+3. Create an options on the settings menu panel to allow the user to choose how many images
+   to average.
+
+Processing and the GUI both run on the same processor core.
 
 """
 
-import sys 
-import os
+import sys, os
 from pathlib import Path
+
 import numpy as np
 
-from PyQt5 import QtGui, QtCore, QtWidgets  
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
+from PyQt5.QtWidgets import QApplication, QLabel, QSpinBox
 
 import context    # Adds paths
 
@@ -24,16 +30,16 @@ from cas_gui.base import CAS_GUI
 from cas_gui.threads.image_processor_class import ImageProcessorClass
 
 
-class AverageProcessor(ImageProcessorClass):
-    
+class AverageProcessor(ImageProcessorClass):  
+    """ We subclass ImageProcessorClass to create a custom image processor.
+    """
        
     def __init__(self):
         """ Technically not needed since we are not adding anything, but
         if any additional initialisation is needed, it goes here.
-        """
-        
-        super().__init__()        
-       
+        """        
+        super().__init__()   
+           
                 
     def process(self, inputFrame):
         """ This is where we do the processing.
@@ -41,7 +47,7 @@ class AverageProcessor(ImageProcessorClass):
         
         # If we have a stack of frames, take the average
         if inputFrame.ndim == 3:
-            outputFrame = np.mean(inputFrame,2)
+            outputFrame = np.mean(inputFrame, 2)
         else:
             outputFrame = inputFrame
         
@@ -50,33 +56,28 @@ class AverageProcessor(ImageProcessorClass):
 
 class example_multi_GUI(CAS_GUI):
     
-
     # If the class name is changed, must also change the window = example_GUI()
     # line at the bottom of the file.
     
     # The values for the fields are stored in the registry using these IDs:
     authorName = "AOG"
-    appName = "Example Multi GUI"
+    appName = "Example Multi Frame GUI"
     
     # Path to resources
     resPath = "..//res"
     
+    # Use only a single core
     multiCore = False
 
     # GUI window title
-    windowTitle = "Kent Camera Acquisition System: Multi Frame Example"
+    windowTitle = "Camera Acquisition System: Multi Frame Example"
         
-    # Define available cameras interface and their display names in the drop-down menu
-    camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
-    camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
-          
     # Default source for simulated camera
     sourceFilename = Path('data/vid_example.tif')
     
     # Define the processor class which will be used by the ImageProcessor thread
     # to process the images 
-    processor = AverageProcessor
-    
+    processor = AverageProcessor    
    
     
     def add_settings(self, settingsLayout):
@@ -90,8 +91,7 @@ class example_multi_GUI(CAS_GUI):
         self.settingsLayout.addWidget(self.numAverageInput)  
         self.numAverageInput.setMinimum(1)
         self.numAverageInput.setMaximum(5)
-        self.numAverageInput.valueChanged[int].connect(self.processing_options_changed)
-        
+        self.numAverageInput.valueChanged[int].connect(self.processing_options_changed)        
     
    
 
@@ -110,20 +110,16 @@ class example_multi_GUI(CAS_GUI):
             # Tell the processor how many images to process as a batch
             self.imageProcessor.set_batch_process_num(self.numAverageInput.value())
             
-            # The image acquisition thread removes frames from the queue when it is
-            # full. We can set the option here of how many to remove so
-            # that we don't remove part of some sequence of frames
+        # The image acquisition thread removes frames from the queue when it is
+        # full. We can set the option here of how many to remove so
+        # that we don't remove part of some sequence of frames. This is important
+        # if we always want to have a sequentual run of images, with no dropped
+        # frames in the sequence.
         
         if self.imageThread is not None:
-            self.imageThread.set_num_removal_when_full(self.numAverageInput.value())
-            
+            self.imageThread.set_num_removal_when_full(self.numAverageInput.value())            
 
-        # The new processing will be applied to the next image grabbed from a 
-        # camera. However, if we are processing an image from a file, we normally
-        # want to apply the new processing immediately, so we need to call
-        # update_file_processing.
-        self.update_file_processing()
-        
+                
         
 # Launch the GUI
 if __name__ == '__main__':    

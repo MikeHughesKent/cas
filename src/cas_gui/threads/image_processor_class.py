@@ -5,7 +5,6 @@ Kent-CAS: Camera Acquisition System
 Base class for image processor classes. Image processor classes should
 aways inherit from this class to maintain future compatibility.
 
-@author: Mike Hughes, Applied Optics Group, University of Kent
 
 """
 
@@ -20,8 +19,7 @@ class ImageProcessorClass:
                 
     def process(self, inputFrame):
         pass
-       
-    
+           
                 
     def message(self, message, parameter):  
 

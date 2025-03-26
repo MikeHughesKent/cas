@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Kent-CAS-GUI Example
+CAS GUI: Example
 
-This examples shows how to extend CAS GUI to create a simple application
+This example shows how to extend CAS GUI to create a simple application
 to process and display images from a camera.
-
-@author: Mike Hughes, Applied Optics Group, University of Kent
 
 """
 
-import sys 
-import os
+import sys, os
 from pathlib import Path
 
 from PyQt5 import QtGui, QtCore, QtWidgets  
@@ -26,8 +23,8 @@ from cas_gui.threads.image_processor_class import ImageProcessorClass
 
 class Filter(ImageProcessorClass):
     """ This is where we define the processing that happens to the image. We
-    sub-class ImageProcessorClass and, at a minimum, implement __init__ to
-    receive settings and process to process each frame.
+    sub-class ImageProcessorClass and, at a minimum, implement '__init__' to
+    receive settings and 'process' to process each frame.
     """    
     
     applyFilter = False
@@ -66,19 +63,15 @@ class example_GUI(CAS_GUI):
     appName = "Example GUI"
     
     # GUI window title
-    windowTitle = "Kent Camera Acquisition System: Example"
+    windowTitle = "Camera Acquisition System: Example"
     
     # Define the image processor
     processor = Filter
         
-    # Define available cameras interface and their display names in the drop-down menu
-    camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
-    camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
-          
     # Default source for simulated camera
     sourceFilename = Path('data/vid_example.tif')  
 
-
+    # Default location for resources
     resPath = "..\\res"         
         
             

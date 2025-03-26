@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CAS and CAS-GUI &mdash; CAS-GUI 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            CAS-GUI
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="using_gui.html">Using the Default GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="menus.html">Adding Menus and Menu Items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multicore.html">Using Multiple Cores</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cameras.html">Implementing Cameras</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">CAS-GUI</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">CAS and CAS-GUI</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cas-and-cas-gui">
+<h1>CAS and CAS-GUI<a class="headerlink" href="#cas-and-cas-gui" title="Permalink to this heading"></a></h1>
+<p>CAS-GUI is a framework for building graphical user interfaces in Python,
+specifically for applications that involve acquiring, processing and displaying
+images from cameras or camera-type systems.</p>
+<p>It consists of CAS, a hardware abstraction layer for cameras, and the GUI
+itself.</p>
+<p>The project is hosted on <a class="reference external" href="https://github.com/MikeHughesKent/ImageDisplayQT/">github</a>. Bug reports, contributions and pull requests are welcome.</p>
+<p>Exampls of simple GUIs created using CAS are <a class="reference external" href="https://github.com/MikeHughesKent/cas/tree/main/examples">available on github</a>.</p>
+<section id="contents">
+<h2>Contents<a class="headerlink" href="#contents" title="Permalink to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#a-simple-custom-gui">A Simple Custom GUI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#adding-processing">Adding Processing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="using_gui.html">Using the Default GUI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="using_gui.html#selecting-the-image-source">Selecting the Image Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_gui.html#starting-and-stopping-acquisition">Starting and Stopping Acquisition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_gui.html#image-display">Image Display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_gui.html#studies">Studies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_gui.html#saving-and-recording">Saving and Recording</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="menus.html">Adding Menus and Menu Items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multicore.html">Using Multiple Cores</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="multicore.html#processor-object-mirroring">Processor Object Mirroring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multicore.html#remote-only-processor-object">Remote-only Processor Object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multicore.html#shared-memory">Shared Memory</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cameras.html">Implementing Cameras</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cameras.html#open-camera">open_camera</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cameras.html#close-camera">close_camera</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cameras.html#get-image">get_image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cameras.html#gain-exposure-and-frame-rate">Gain, Exposure and Frame Rate</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mike Hughes.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

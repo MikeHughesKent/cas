@@ -1,16 +1,18 @@
 # -*- coding: utf-8 -*-
 """
+CAS: Camera Acquisition System
+
 A camera interface for CAS which instead of using a camera, loads images 
 from a file (single or stack).
 
-Mike Hughes, Applied Optics Group, University of Kent
-
 """
+import time
 
-from cas_gui.cameras.GenericCamera import GenericCameraInterface
 from PIL import Image, ImageSequence
 import numpy as np
-import time
+
+from cas_gui.cameras.GenericCamera import GenericCameraInterface
+
 
 class FileInterface(GenericCameraInterface):
         
@@ -20,6 +22,7 @@ class FileInterface(GenericCameraInterface):
     lastImage = None
     fileOpen = False
     dataset = None
+    stack = None
     
     def __init__(self, **kwargs): 
         
@@ -27,10 +30,12 @@ class FileInterface(GenericCameraInterface):
         self.lastImageTime = time.perf_counter()
         self.fps = 30
         self.frameRateEnabled = False
+
         if self.filename is not None:
             try:
                 self.dataset = Image.open(self.filename)
                 self.fileOpen = True
+                self.stack = None
             except:
                 self.fileOpen = False
                 return None
@@ -48,7 +53,7 @@ class FileInterface(GenericCameraInterface):
     
     def get_camera_list(self):
         return "File Processor, source = " + self.filename  
-     
+    
         
     def open_camera(self, camID): 
         pass       
@@ -60,7 +65,6 @@ class FileInterface(GenericCameraInterface):
         
     def dispose(self):
         self.dataset.close()       
-    
       
                
     def get_image(self):
@@ -84,6 +88,24 @@ class FileInterface(GenericCameraInterface):
         return imData
     
     
+    def get_all_images(self):
+        
+        if self.stack is None:
+        
+            with Image.open(self.filename) as im:
+            
+                if im.n_frames > 1:
+                    h,w = np.shape(im)
+                    dt = np.array(im).dtype
+                    self.stack = np.zeros((im.n_frames, h,w), dtype = dt)
+                    for i in range(im.n_frames):
+                        im.seek(i)
+                        self.stack[i,:,:] = np.array(im)
+                    return self.stack
+                else:    
+                    return np.array(Image.open(self.filename))
+        else:
+            return self.stack
     
     def set_image_idx(self, idx):
         """ If the file contains multiple frames, sets the index of the

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Implementing Cameras &mdash; CAS-GUI 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Using Multiple Processors" href="multicore.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            CAS-GUI
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="menus.html">Adding Menus and Menu Items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multicore.html">Using Multiple Processors</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Implementing Cameras</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#open-camera">open_camera</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#close-camera">close_camera</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#get-image">get_image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#gain-exposure-and-frame-rate">Gain, Exposure and Frame Rate</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CAS-GUI</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Implementing Cameras</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/cameras.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="implementing-cameras">
+<h1>Implementing Cameras<a class="headerlink" href="#implementing-cameras" title="Permalink to this heading"></a></h1>
+<p>To allow acquisition from a camera or other imaging system, implement a
+sub-class of the GenericCamera class in ‘src/cameras/generic_camera.py’.</p>
+<p>There are several examples available in the folder for different cameras. It
+is not necessary to implement all of the methods in the GenericCamera class,
+for example if the frame rate methods are not implemented, it will simply not
+be possible to adjust the frame rate in the GUI, but images will still be acquired.</p>
+<p>To produce a minimal working camera, the following methods need to be implemented:</p>
+<section id="open-camera">
+<h2>open_camera<a class="headerlink" href="#open-camera" title="Permalink to this heading"></a></h2>
+<p>The function should do whatever is necessary to connect to the camera and prepare
+for image acquisition. The function accepts a single argument for the camera number, simply ignore this
+if not relevant for your camera. If the camera is successfully opened, the function
+must set:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">camera_open</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+</section>
+<section id="close-camera">
+<h2>close_camera<a class="headerlink" href="#close-camera" title="Permalink to this heading"></a></h2>
+<p>Place any calls here that are needed to disconnect from the camera. If the camera
+is successfully closed, the function must set:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">camera_open</span> <span class="o">=</span> <span class="kc">False</span>
+</pre></div>
+</div>
+</section>
+<section id="get-image">
+<h2>get_image<a class="headerlink" href="#get-image" title="Permalink to this heading"></a></h2>
+<p>This method will be called by CAS_GUI to grab images from the camera. This
+method must return either an image as a numpy array or <code class="docutils literal notranslate"><span class="pre">None</span></code> if any
+image could not be acquired.</p>
+</section>
+<section id="gain-exposure-and-frame-rate">
+<h2>Gain, Exposure and Frame Rate<a class="headerlink" href="#gain-exposure-and-frame-rate" title="Permalink to this heading"></a></h2>
+<p>If these functions are not implemented, then by default it will not be possible to change the gain, exposure or frame rate in the GUI, and the
+functions <code class="docutils literal notranslate"><span class="pre">is_frame_rate_enabled()</span></code>, <code class="docutils literal notranslate"><span class="pre">is_gain_enabled()</span></code> and <code class="docutils literal notranslate"><span class="pre">is_exposure_enabled()</span></code> will return False.</p>
+<p>To enable frame rate, expsoure or gain, override these functions to return <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+<p>Then implement functions to get and set the values. For example, for the frame rate, implement <code class="docutils literal notranslate"><span class="pre">get_frame_rate()</span></code>
+which should return the current frame rate, and <code class="docutils literal notranslate"><span class="pre">set_frame_rate(frameRate)</span></code> which takes one parameter (frameRate) and should attempt to set it. These will then be used by CAS GUI to
+implement user-requsted changes. Finally, also implement
+<code class="docutils literal notranslate"><span class="pre">get_frame_rate_range()</span></code> which should return a tuple of the minimum and maximum values that can be set. This is used by CAS GUI to set the range of the frame rate slider and spin box. The same functions
+can be implemented for exposure and gain (replacing ‘frame_rate’ with ‘exposure’ and ‘gain’).</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="multicore.html" class="btn btn-neutral float-left" title="Using Multiple Processors" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mike Hughes.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

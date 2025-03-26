@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Kent-CAS: Camera Acquisition System
+CAS: Camera Acquisition System
+
 Camera Interface for Thorlabs DCX camera
-
-Mike Hughes, Applied Optics Group, University of Kent
-
 """
   
 from instrumental import instrument, list_instruments
@@ -30,14 +28,14 @@ class DCXCameraInterface(GenericCameraInterface):
         self.cam.start_live_video(exposure_time='2 ms')
         self.camera_open = True
 
-
                 
     def close_camera(self):
         del(self.cam)
-        pass
+
         
     def dispose(self):
         pass
+
                
     def get_image(self):
         self.cam.wait_for_frame()

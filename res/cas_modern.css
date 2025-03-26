@@ -65,10 +65,15 @@ QPushButton:disabled {
  
  
 QDoubleSpinBox{
-            background-color: rgba(255, 255, 255, 255);
+            background-color: rgba(255, 255, 255, 1);
             padding: 4px;
             color: black;
             font-size:9pt;
+}
+
+QDoubleSpinBox:disabled {
+    background-color: rgba(230, 230, 230, 1); /* Light gray background for disabled state */
+    color: gray; /* Gray text for disabled state */
 }
 
 QComboBox { 

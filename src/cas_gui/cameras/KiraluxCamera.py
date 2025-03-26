@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Jun 20 07:28:31 2021
+CAS: Camera Acquisition System
 
-@author: AOG
+Camera interface for Flea Cameras (may also work for other FLIR cameras).
+
 """
 
 import cv2 as cv
@@ -11,11 +12,12 @@ import sys
 
 import os
 
-path = os.path.split(__file__)[0] + r"\thorlabs dll"
+path = os.path.split(__file__)[0] + r"\thorlab"
 sys.path.append(path)
-from thorlabs_tsi_sdk.tl_camera import TLCameraSDK, TLCamera, Frame
-from thorlabs_tsi_sdk.tl_camera_enums import SENSOR_TYPE
-from thorlabs_tsi_sdk.tl_mono_to_color_processor import MonoToColorProcessorSDK
+
+from cas_gui.cameras.thorlab.tl_camera import TLCameraSDK, TLCamera, Frame
+from cas_gui.cameras.thorlab.tl_camera_enums import SENSOR_TYPE
+from cas_gui.cameras.thorlab.tl_mono_to_color_processor import MonoToColorProcessorSDK
 import numpy as np
 from cas_gui.cameras.GenericCamera import GenericCameraInterface  
     
@@ -39,9 +41,6 @@ class KiraluxCamera(GenericCameraInterface):
         self.camera.arm(2)
         self.camera.issue_software_trigger()
         self.camera_open = True
-
-        
-      
         
         
     def close_camera(self):
@@ -64,7 +63,6 @@ class KiraluxCamera(GenericCameraInterface):
 
    
     def set_frame_rate_on(self):
-        
        
         return True
         

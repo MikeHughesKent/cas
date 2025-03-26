@@ -2,12 +2,12 @@
 """
 Kent-CAS-GUI Example
 
-This examples shows how to extend CAS GUI to create a simple application
-to process and display images from a camera. In this example, the processing is 
-performed using a separate process, which should lead to an increase in the
-maximum achievable frame rate before frames are dropped.
+This example shows how to extend CAS GUI to create a simple application
+to process and display images from a camera. 
 
-@author: Mike Hughes, Applied Optics Group, University of Kent
+In this example, the processing is performed using a separate process, 
+which should lead to an increase in the maximum achievable frame rate before 
+frames are dropped.
 
 """
 
@@ -24,7 +24,6 @@ import context    # Adds paths
 
 from cas_gui.base import CAS_GUI
 from cas_gui.threads.image_processor_class import ImageProcessorClass
-
 
 class GaussianFilter(ImageProcessorClass):
     
@@ -95,8 +94,7 @@ class example_GUI(CAS_GUI):
         settingsLayout.addWidget(QLabel("Filter Size (px):"))
         self.filterSizeInput = QSpinBox(objectName = 'FilterSizeInput')
         settingsLayout.addWidget(self.filterSizeInput)  
-        self.filterSizeInput.valueChanged[int].connect(self.processing_options_changed)
-        
+        self.filterSizeInput.valueChanged[int].connect(self.processing_options_changed)       
   
 
 
@@ -113,11 +111,11 @@ class example_GUI(CAS_GUI):
         if self.imageProcessor is not None:
             self.imageProcessor.get_processor().filterSize = self.filterSizeInput.value()
             self.imageProcessor.get_processor().applyFilter = self.filterCheckBox.isChecked()
-
             
             # If using multicore, it's essential to call update_settings once 
             # we are done so that the settigns are sent across to the core
-            # where the processor is running
+            # where the processor is running. Otherwise there will be no
+            # changes implemented.
             self.imageProcessor.update_settings()
             
         # The new processing will be applied to the next image grabbed from a 

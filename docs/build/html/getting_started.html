@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started &mdash; CAS-GUI 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Adding Menus and Menu Items" href="menus.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            CAS-GUI
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#a-simple-custom-gui">A Simple Custom GUI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#adding-processing">Adding Processing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="menus.html">Adding Menus and Menu Items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multicore.html">Using Multiple Cores</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cameras.html">Implementing Cameras</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CAS-GUI</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Getting Started</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/getting_started.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this heading"></a></h1>
+<p>The base class for all CAS-GUI based GUIs is CAS_GUI which can be found in the src/cas_gui/base.py file.
+Running this file will create an instance of the base class which can be used as a simple camera viewer,
+with save and record capabilities. Run this first to ensure that CAS and CAS-GUI are correctly
+installed on your system.</p>
+<p>The camera source can be selected by opening the ‘Image Source’ menu and selecting the desired
+camera from the drop-down menu. ‘Simulated camera’ will display a sequence of frames containg
+the digits 0-9 and should be tested first.</p>
+<p>For custom GUIs, the base class is sub-classed and methods are overridden as required. There are a number of
+helper functions to simplify the process of adding GUI elements.</p>
+<section id="a-simple-custom-gui">
+<h2>A Simple Custom GUI<a class="headerlink" href="#a-simple-custom-gui" title="Permalink to this heading"></a></h2>
+<p>To implement a custom GUI, CAS-GUI is sub-classed. A bare-bones example is as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">PyQt5.QtWidgets</span> <span class="kn">import</span> <span class="n">QApplication</span>
+<span class="kn">from</span> <span class="nn">cas_gui.base</span> <span class="kn">import</span> <span class="n">CAS_GUI</span>
+
+
+<span class="k">class</span> <span class="nc">example_GUI</span><span class="p">(</span><span class="n">CAS_GUI</span><span class="p">):</span>
+    <span class="n">resPath</span> <span class="o">=</span> <span class="s2">&quot;..</span><span class="se">\\</span><span class="s2">res&quot;</span>
+    <span class="n">sourceFilename</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;data/vid_example.tif&quot;</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+
+    <span class="c1"># Create and display GUI</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">QApplication</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span>
+    <span class="n">window</span> <span class="o">=</span> <span class="n">example_GUI</span><span class="p">()</span>
+    <span class="n">window</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="c1"># When the window is closed, close everything</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">exec_</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>This will create an exact clone of CAS-GUI with no additional functionality. Note that CAS_GUI is a subclass
+of a PyQT <code class="docutils literal notranslate"><span class="pre">QMainWindow</span></code> and so maintains all the functionality of that class.</p>
+<p>We must specify the path to the resources, including icons etc, and the example simulated camera data.</p>
+<p>One of the first things we might like to do is change the name of the window. We do this
+by adding the init() methods, calling the superclass init() and then setting the window title using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+    <span class="n">windowTitle</span> <span class="o">=</span> <span class="s2">&quot;My example GUI&quot;</span>
+</pre></div>
+</div>
+<p>Of course you could also directly change the window title directly by calling <code class="docutils literal notranslate"><span class="pre">example_GUI.setWindowTitle()</span></code>, but in general
+it is better to use the abstracted approach where possible to avoid needing to understand details of the CAS_GUI implementation (which may change in future versions).</p>
+<p>It is also useful at this point to set two additional parameters:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">authorName</span> <span class="o">=</span> <span class="s2">&quot;Me&quot;</span>
+<span class="n">appName</span> <span class="o">=</span> <span class="s2">&quot;My Example GUI&quot;</span>
+</pre></div>
+</div>
+<p>Setting unique values here will mean that any settings saved by your GUI will be distinct from settings saved by other GUIs based on CAS-GUI on the same machine.</p>
+</section>
+<section id="adding-processing">
+<h2>Adding Processing<a class="headerlink" href="#adding-processing" title="Permalink to this heading"></a></h2>
+<p>To perform real-time processing on the image, we need to create a processor class that inherits from <code class="docutils literal notranslate"><span class="pre">ImageProcessorClass</span></code>. As a minimum, the <code class="docutils literal notranslate"><span class="pre">process</span></code> method must be implemented.
+This takes the raw image as the first parameter and returns the processed image. We specify the name of the class using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">processor</span> <span class="o">=</span> <span class="n">name</span>
+</pre></div>
+</div>
+<p>where name is a reference to the class (not an instance of the class - an instance will be created by CAS-GUI).</p>
+<p>A minimal fully-working examples that simply flips the images is given below.
+Note that we have imported <code class="docutils literal notranslate"><span class="pre">ImageProcessorClass</span></code> and also <code class="docutils literal notranslate"><span class="pre">`numpy</span></code> since images in CAS_GUI are, by default, stored as 2D or 3D numpy arrays.</p>
+<p>We created a <code class="docutils literal notranslate"><span class="pre">MyProcessorClass</span></code> which inherits from <code class="docutils literal notranslate"><span class="pre">ImageProcessorClass</span></code> and have implemented the <code class="docutils literal notranslate"><span class="pre">process</span></code> method which will be called by the GUI every time an image requires processing. This must take
+a single parameter, the raw image, and return the processed image.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">PyQt5.QtWidgets</span> <span class="kn">import</span> <span class="n">QApplication</span>
+
+<span class="kn">from</span> <span class="nn">cas_gui.base</span> <span class="kn">import</span> <span class="n">CAS_GUI</span>
+<span class="kn">from</span> <span class="nn">cas_gui.threads.image_processor_class</span> <span class="kn">import</span> <span class="n">ImageProcessorClass</span>
+
+<span class="k">class</span> <span class="nc">MyProcessorClass</span><span class="p">(</span><span class="n">ImageProcessorClass</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputImage</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">inputImage</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">example_GUI</span><span class="p">(</span><span class="n">CAS_GUI</span><span class="p">):</span>
+    <span class="n">windowTitle</span> <span class="o">=</span> <span class="s2">&quot;My example GUI&quot;</span>
+    <span class="n">processor</span> <span class="o">=</span> <span class="n">MyProcessorClass</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+
+     <span class="c1"># Create and display GUI</span>
+     <span class="n">app</span> <span class="o">=</span> <span class="n">QApplication</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span>
+     <span class="n">window</span> <span class="o">=</span> <span class="n">example_GUI</span><span class="p">()</span>
+     <span class="n">window</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+     <span class="c1"># When the window is closed, close everything</span>
+     <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">exec_</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Running this example will result in a flipped image being shown in the GUI.</p>
+<p>If we would like to control parameters of the processing from the GUI, we can directly change member variables or call methods of the
+processor class. In the example_GUI class, a reference to the processor class is stored in the <code class="docutils literal notranslate"><span class="pre">self.processor</span></code> parameter. For example, if we
+Therefore, if we change the processor to have a Boolean flag, <code class="docutils literal notranslate"><span class="pre">flip</span></code>, which controls whether the image is flipped or not:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyProcessorClass</span><span class="p">(</span><span class="n">ImageProcessorClass</span><span class="p">):</span>
+    <span class="n">flip</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputImage</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flip</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">inputImage</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">inputImage</span>
+</pre></div>
+</div>
+<p>Then we can control this from the GUI by adding a checkbox to the GUI and connecting it to a method that changes the value of the flip flag, which
+can be accessed as <code class="docutils literal notranslate"><span class="pre">self.processor.flip</span></code>. However, it is always advisable to check that the processor has been created (and is not <code class="docutils literal notranslate"><span class="pre">None</span></code>), so, for example, if we had a checkbox called <code class="docutils literal notranslate"><span class="pre">flipCheckBox</span></code> that was connected to a method called <code class="docutils literal notranslate"><span class="pre">flipImage</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">flipImage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">processor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">processor</span><span class="o">.</span><span class="n">flip</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flipCheckBox</span><span class="o">.</span><span class="n">isChecked</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Details of how to add GUI elements, such as checkboxes, are given in the ‘Menus’ section.</p>
+<p>The image processing will run in a separate thread from both the GUI and
+the image acquisition loop, but on the same processsor core (i.e. the same process). See the
+‘Multicore’ section for details on how to run the processing on a separate core, and for a different procedure to update settings in the processor class.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="menus.html" class="btn btn-neutral float-right" title="Adding Menus and Menu Items" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mike Hughes.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

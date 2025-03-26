@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adding Menus and Menu Items &mdash; CAS-GUI 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Implementing Cameras" href="cameras.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            CAS-GUI
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Adding Menus and Menu Items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cameras.html">Implementing Cameras</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CAS-GUI</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Adding Menus and Menu Items</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/menus.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="adding-menus-and-menu-items">
+<h1>Adding Menus and Menu Items<a class="headerlink" href="#adding-menus-and-menu-items" title="Permalink to this heading"></a></h1>
+<p>By default there is a settings menu in the GUI which can be used to put widgets
+to control the image processing (or for any other purpose). To add items to this menu,
+the <code class="docutils literal notranslate"><span class="pre">add_settings</span></code> method is be over-ridden. This must take
+one parameter which is the PyQt layout for the settings menu. Widgets should be created
+in the normal way in PyQt and then added to this layout. For example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">add_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">settingsLayout</span><span class="p">):</span>
+<span class="w">   </span><span class="sd">&quot;&quot;&quot; We override this function to add custom options to the setings menu</span>
+<span class="sd">   panel.</span>
+<span class="sd">   &quot;&quot;&quot;</span>
+
+   <span class="c1"># Filter Checkbox</span>
+   <span class="bp">self</span><span class="o">.</span><span class="n">filterCheckBox</span> <span class="o">=</span> <span class="n">QCheckBox</span><span class="p">(</span><span class="s2">&quot;Apply Filter&quot;</span><span class="p">,</span> <span class="n">objectName</span> <span class="o">=</span> <span class="s1">&#39;FilterCheck&#39;</span><span class="p">)</span>
+   <span class="n">settingsLayout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filterCheckBox</span><span class="p">)</span>
+   <span class="bp">self</span><span class="o">.</span><span class="n">filterCheckBox</span><span class="o">.</span><span class="n">stateChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">processing_options_changed</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this example, a checkbox has been added to the menu. It is normally useful
+to store a reference to the widget, which is done simply by assigning it to a variable
+within <code class="docutils literal notranslate"><span class="pre">self</span></code>, i.e. the GUI class. This can then be accessed from anywhere within the class.</p>
+<p>The function used to handle a change of the state of the widget should also be added. Here
+this has been defined as <code class="docutils literal notranslate"><span class="pre">self.processing_options_changed</span></code>. This needs to be defined:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">processing_options_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">event</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Function to handle a change in the state of one or more widgets &quot;&quot;&quot;</span>
+</pre></div>
+</div>
+<p>In this example, the state of the checkbox could then be obtained from <code class="docutils literal notranslate"><span class="pre">self.filterCheckBox.isChecked()</span></code>.</p>
+<p>Entirely new menu options can also be created. This requires over-riding the <code class="docutils literal notranslate"><span class="pre">create_layout</span></code> method. To obtain a new expanding menu we can use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">create_layout</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_layout</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">myPanelButton</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_menu_button</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;My Menu&quot;</span><span class="p">,</span>
+                                                 <span class="n">handler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">my_menu_button_clicked</span><span class="p">,</span>
+                                                 <span class="n">menuButton</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                                                 <span class="n">position</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">myPanel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_my_panel</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Note that we first call <code class="docutils literal notranslate"><span class="pre">super().create_layout()</span></code>, otherwise we will prevent the rest of the layout from being created. Then we create the menu button using
+<code class="docutils literal notranslate"><span class="pre">self.create_menu_button</span></code>. We specify the <code class="docutils literal notranslate"><span class="pre">text</span></code> for the button, the <code class="docutils literal notranslate"><span class="pre">handler</span></code> function to be called when the button is clicked, the <code class="docutils literal notranslate"><span class="pre">position</span></code> for the button on the menu bar (0 is at the top, etc.).
+We have also specified <code class="docutils literal notranslate"><span class="pre">menuButton</span> <span class="pre">=</span> <span class="pre">True</span></code>. This will cause the button to work to toggle the expanding menu on or off.</p>
+<p>We now have to create the explanding menu and set it to open when the button is clicked. We implement:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">my_menu_button_clicked</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">expanding_menu_clicked</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">myMenuButton</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">myPanel</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>which makes use of the helper function <code class="docutils literal notranslate"><span class="pre">expanding_menu_clicked()</span></code>.</p>
+<p>We also need to define the method to create the panel:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">create_my_panel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+    <span class="n">widget</span><span class="p">,</span> <span class="n">layout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">panel_helper</span><span class="p">(</span><span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;My Menu&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Filter Checkbox</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">filterCheckBox</span> <span class="o">=</span> <span class="n">QCheckBox</span><span class="p">(</span><span class="s2">&quot;Apply Filter&quot;</span><span class="p">,</span> <span class="n">objectName</span> <span class="o">=</span> <span class="s1">&#39;FilterCheck&#39;</span><span class="p">)</span>
+    <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filterCheckBox</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">filterCheckBox</span><span class="o">.</span><span class="n">stateChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">processing_options_changed</span><span class="p">)</span>
+
+    <span class="n">layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">widget</span>
+</pre></div>
+</div>
+<p>Note that this function needs to create a container widget and layout using the <code class="docutils literal notranslate"><span class="pre">panel_helper</span></code> method. We then add whatever
+widgets we like to the layout, with connections to handler functions. Finally we add a stretch and then the function must return
+a reference to the container widget.</p>
+<p>We can also add menu buttons that do not open an expanding menu, but perform some other task. In this case we simply
+add the button:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">create_layout</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_layout</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">myMenuButton</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_menu_button</span><span class="p">(</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;My Button&quot;</span><span class="p">,</span>
+                                                <span class="n">handler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">my_button_clicked</span><span class="p">,</span>
+                                                <span class="n">position</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>where we have no longer set <code class="docutils literal notranslate"><span class="pre">menuButton</span> <span class="pre">=</span> <span class="pre">True</span></code>. We then need to implement <code class="docutils literal notranslate"><span class="pre">my_button_clicked</span></code> with the required functionality.</p>
+<p>We can make the button latch by passing <code class="docutils literal notranslate"><span class="pre">hold</span> <span class="pre">=</span> <span class="pre">True</span></code>. In this case we toggle the button between on and off
+with each click. The handler function can check whether the button is toggled on or off using <code class="docutils literal notranslate"><span class="pre">self.myPanelButton.isChecked()</span></code> or change the state
+using <code class="docutils literal notranslate"><span class="pre">self.myPanelButton.setChecked(True/False)</span></code>.</p>
+<p>A complete example of a GUI with custom buttons and a menu and used a menu items to control
+the image processing is in ‘examples/gui_example_menus.py’.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cameras.html" class="btn btn-neutral float-right" title="Implementing Cameras" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Mike Hughes.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

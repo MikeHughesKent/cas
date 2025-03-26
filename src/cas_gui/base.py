@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Kent-CAS-GUI-Base
+CAS-GUI-Base
 
-Kent CAS GUI is a graphical user interface built around the 
-Kent Camera Acquisition System (Kent-CAS).
+CAS GUI is a graphical user interface built around the 
+Camera Acquisition System (CAS).
 
 By itself, this class allows camera images or files to be viewed in real time. 
 
 It is intended as a base class to be extended by more complete programs that
 provide further functionality.
-
-@author: Mike Hughes, Applied Optics Group, University of Kent
 
 """
 
@@ -39,8 +37,8 @@ from PIL import Image, TiffImagePlugin
 
 import cv2 as cv
 
-# Add a path to ourselves in case this module is run
-sys.path.append(r'..\\')  
+# Add a path one level up to allow imports from the main CAS package
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from cas_gui.widgets.double_slider import DoubleSlider
 from cas_gui.threads.image_acquisition_thread import ImageAcquisitionThread
@@ -49,11 +47,11 @@ from cas_gui.threads.image_processor_thread import ImageProcessorThread
 import cas_gui.res.resources
 from cas_gui.cameras.FileInterface import FileInterface
 from cas_gui.utils.im_tools import to8bit, to16bit
+from cas_gui.widgets.label_checkbox_widget import LabelCheckboxWidget    
+from cas_gui.widgets.range_spin_box import RangeSpinBox
 
 cuda = True                 # Set to False to disable use of GPU
 multicore = True            # Set to True to run processor on a different core
-resPath = "..\\..\\res"
-
 
 class CAS_GUI(QMainWindow):
 
@@ -64,7 +62,7 @@ class CAS_GUI(QMainWindow):
     AVI = 1    
    
     # Window Appearance
-    windowTitle = "Kent Camera Acquisition System"
+    windowTitle = "Camera Acquisition System"
     windowSize = (1200,800)
     windowMinHeight = 800
 
@@ -73,18 +71,14 @@ class CAS_GUI(QMainWindow):
     appName = "CAS"
 
     # Locations for icons etc. 
-    resPath = "..\\..\\res"
+    resPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'res'))
     logoFilename = None
     iconFilename = 'logo_256_red.png'
     studyRoot = "../../studies"
-    studyPath = "default"
+    studyPath = "../../studies/default"
     studyName = "default"
-        
-    # Define available cameras interface and their display names in the drop-down menu
-    camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
-    camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
-    camTypes = [FILE_TYPE, SIM_TYPE, REAL_TYPE, REAL_TYPE, REAL_TYPE, REAL_TYPE, REAL_TYPE]
-    
+            
+
     # Other Options
     restoreGUI = True
     manualImageTransfer = True
@@ -96,7 +90,7 @@ class CAS_GUI(QMainWindow):
     sharedMemoryArraySize = (2048,2048)
 
     # Default source for simulated camera
-    sourceFilename = r"..\..\tests\test_data\stack_10.tif"
+    sourceFilename = Path('../../examples/data/vid_example.tif')  
     
     # The size of the queue for raw images from the camera. If this is exceeded
     # then the oldest image will be removed.
@@ -108,7 +102,7 @@ class CAS_GUI(QMainWindow):
     optionsPanelSize = 300
     
     # Timer interval defualts (ms)
-    GUIupdateInterval = 100
+    GUIupdateInterval = 50
     imagesUpdateInterval = 10
     
     # Defaults
@@ -133,16 +127,21 @@ class CAS_GUI(QMainWindow):
     backgroundSource = ""
     recordBuffer = []
     imageId = 0
+    camFile = f"../res/cameras.csv"
+
     
     
-    def __init__(self, parent=None):   
+    def __init__(self, parent = None):   
         """ Initial setup of GUI.
         """
         
         super(CAS_GUI, self).__init__(parent)
         
         self.defaultIcon = os.path.join(self.resPath, self.iconFilename)
-        self.recordFolder = Path.cwd().as_posix()
+
+        self.recordFolder = os.path.join(Path.cwd().as_posix(), self.studyPath)
+
+        self.load_camera_names()
         
         # Create the GUI. 
         self.create_layout()   
@@ -193,12 +192,46 @@ class CAS_GUI(QMainWindow):
             
         
     def apply_default_settings(self):
-        """Overload this function in sub-class to provide defaults"""
+        """ Overload this function in sub-class to provide defaults"""
         pass
     
+    
+    def load_camera_names(self):
+        """ Load in CamNames, CamSources and CamTypes from a file. This allows the user 
+        to add new cameras without changing the code. The file should be a CSV 
+        file with the following format:
+            
+            Camera Name, Camera Source, Camera Type
+
+        The Camera Name is the name that will appear in the drop-down menu
+        The Camera Source is the name of the class that implements the camera interface
+        The Camera Type is 0 for file, 1 for real camera and 2 for simulated camera
+        """
         
+        self.camNames = []
+        self.camSources = []
+        self.camTypes = []
+
+        if not os.path.exists(self.camFile):
+            self.camFile = os.path.join(self.resPath, 'cameras.csv')
+        if os.path.exists(self.camFile):
+            with open(self.camFile, 'r') as f:
+                for line in f:
+                    parts = line.strip().split(',')
+                    self.camNames.append(str.strip(parts[0]))
+                    self.camSources.append(str.strip(parts[1]))
+                    self.camTypes.append(int(parts[2]))
+
+        # Otherwise use the defaults:
+        if len(self.camNames) == 0:
+            camNames = ['File', 'Simulated Camera', 'Webcam', 'Colour Webcam']
+            camSources = ['ProcessorInterface', 'SimulatedCamera', 'WebCamera', 'WebCameraColour']
+            camTypes = [FILE_TYPE, SIM_TYPE, REAL_TYPE, REAL_TYPE]
+
+
+
     def create_timers(self):
-        """ Timers are used for image acquisition and GUI updates"""
+        """ Creates timers used for image acquisition and GUI updates"""
 
         # Create timer for GUI updates
         self.GUITimer=QTimer()
@@ -217,18 +250,16 @@ class CAS_GUI(QMainWindow):
         # Create a standard layout, with panels arranged horizontally
         self.create_standard_layout(title = self.windowTitle, iconFilename = self.defaultIcon)
 
-
         # Create Main Menu Area
         self.menuPanel = QWidget(objectName="menu_panel")
         self.menuPanel.setMinimumSize(self.menuPanelSize, 400)
         self.menuPanel.setMaximumWidth(self.menuPanelSize)
         self.menuLayout = QVBoxLayout()
         self.menuPanel.setLayout(self.menuLayout)
-        self.layout.addWidget(self.menuPanel)
-        
+        self.layout.addWidget(self.menuPanel)        
         
         # Add Main Menu Buttons
-        self.studyMenuButton = self.create_menu_button("New Study", QIcon(os.path.join(self.resPath, 'icons', 'study_white.svg')), self.study_menu_clicked, False, False, position = 0)
+        self.studyMenuButton = self.create_menu_button("New Study", QIcon(os.path.join(self.resPath, 'study_white.svg')), self.study_menu_clicked, False, False, position = 0)
         self.liveButton = self.create_menu_button("Live Imaging", QIcon(os.path.join(self.resPath, 'icons', 'play_white.svg')), self.live_button_clicked, True)
         self.sourceButton = self.create_menu_button("Image Source", QIcon(os.path.join(self.resPath, 'icons', 'camera_white.svg')), self.source_button_clicked, True, menuButton = True)
         self.snapButton = self.create_menu_button("Snap Image", QIcon(os.path.join(self.resPath, 'icons', 'download_white.svg')), self.snap_button_clicked, False )
@@ -237,7 +268,6 @@ class CAS_GUI(QMainWindow):
         self.settingsButton = self.create_menu_button("Settings", QIcon(os.path.join(self.resPath, 'icons', 'settings_white.svg')), self.settings_button_clicked, True, menuButton = True)
         self.menuLayout.addStretch()
         self.exitButton = self.create_menu_button("Exit", QIcon(os.path.join(self.resPath, 'icons', 'exit_white.svg')), self.exit_button_clicked, False)
-
 
         # Create Expanding Menu Area
         self.optionsScrollArea = QScrollArea()
@@ -267,8 +297,7 @@ class CAS_GUI(QMainWindow):
         # Create Menu Panels
         self.settingsPanel = self.create_settings_panel()
         self.sourcePanel = self.create_source_panel()
-        self.recordPanel = self.create_record_panel()              
-
+        self.recordPanel = self.create_record_panel()  
 
         # Image Control Area
         self.contentPanel = QWidget()
@@ -276,7 +305,6 @@ class CAS_GUI(QMainWindow):
         self.contentPanel.setLayout(self.contentLayout)
         self.contentPanel.setContentsMargins(0, 0, 0, 0)
         self.contentLayout.setContentsMargins(0, 0, 0, 0)
-        #self.contentPanel.setStyleSheet("QWidget{padding:20px;margin:20px;background-color:rgba(40,40,40,255);}")
        
         self.mainDisplay, self.mainDisplayFrame = self.create_image_display()    
 
@@ -303,7 +331,7 @@ class CAS_GUI(QMainWindow):
                            hold = False, menuButton = False, position = None):
         """ Creates a button and adds it to the main menu.
         
-        Keyword Arguments:
+        Optional Keyword Arguments:
             text       : str
                          button text (default is no text)
             icon       : QIcon
@@ -311,13 +339,13 @@ class CAS_GUI(QMainWindow):
             handler    : function
                          function to call when button is clicked (defualt is no handler)
             hold       : boolean
-                         if True, button is checkable, i.e. can toggle on and off. 
+                         if True, button is checkable, i.e. can toggle on and off
                          (defualt is False)
             menuButton : boolean
                          if true, will be registered so that button will be unchecked                         
                          when another menu is opened
             position   : int
-                         is specified, button will be inserted at this position from top             
+                         if specified, button will be inserted at this position from top             
         Returns:
             QButton    : reference to button 
         """    
@@ -338,13 +366,13 @@ class CAS_GUI(QMainWindow):
         return button
     
     
-    def create_standard_layout(self, title = "Kent Camera Acquisition System", 
+    def create_standard_layout(self, title = "Camera Acquisition System", 
                                iconFilename = None):
         """ Sets window title and icon, and creates main widget.
         
-        Keyword Arguments:
+        Optional Keyword Arguments:
             title        : str
-                           main window title, default is "Kent Camera Acquisition System"
+                           main window title, default is "Camera Acquisition System"
             iconFilename : str      
                            path to application icon 
         """        
@@ -370,9 +398,9 @@ class CAS_GUI(QMainWindow):
     def panel_helper(self, title = None):
         """ Helper to start off creation of a new expanding menu panel.
         
-        Keyword arguments:
+        Optional Keyword Arguments:
             title     : str
-                        Header to go at top of panel
+                        Text of header to go at top of panel
                         
         Returns:
             tuple of widget, layout. Add child widgets to the layout.
@@ -409,7 +437,7 @@ class CAS_GUI(QMainWindow):
     
     
     def create_record_panel(self):
-        """ Creates expanding panel for with recording options. 
+        """ Creates expanding panel for use with recording options. 
         """
         
         panel, self.recordLayout = self.panel_helper(title = "Record")
@@ -424,7 +452,6 @@ class CAS_GUI(QMainWindow):
         self.recordBufferCheck = QCheckBox("Buffered", objectName = "RecordBuffered")
         self.recordLayout.addWidget(self.recordBufferCheck)
         self.recordBufferCheck.stateChanged.connect(self.record_options_changed)
-
         
         self.recordBufferSpin = QSpinBox(objectName = "Record Buffer Size")
         self.recordBufferSizeLabel = QLabel("Buffer Size:")
@@ -464,6 +491,10 @@ class CAS_GUI(QMainWindow):
     def add_settings(self, settingsLayout):
         """ Adds options to the settings panels. Override this function in 
         a sub-class to add custom options.
+
+        Arguments:
+            settingsLayout : QVBoxLayout
+                             Layout to which the widgets should be added.
         """
         
         text = "This is a place holder. Applications derived from CAS-GUI can put their specific settings here."
@@ -475,8 +506,7 @@ class CAS_GUI(QMainWindow):
     
     def create_source_panel(self):
         """ Creates expanding panel for camera source options.
-        """
-        
+        """        
         # Initialise a panel
         widget, self.sourceLayout = self.panel_helper(title = "Image Source")
                 
@@ -490,8 +520,7 @@ class CAS_GUI(QMainWindow):
         self.cameraIDSpin = QSpinBox(objectName = 'cameraIDSpin')
         self.cameraIDLabel = QLabel("Camera ID No.:")
         self.sourceLayout.addWidget(self.cameraIDLabel)
-        self.sourceLayout.addWidget(self.cameraIDSpin)
-        
+        self.sourceLayout.addWidget(self.cameraIDSpin)        
 
         # Camera Settings Panel 
         self.camSettingsPanel = QWidget()
@@ -737,18 +766,7 @@ class CAS_GUI(QMainWindow):
         displayFrame.setSizePolicy(policy)
         
         return display, frameOuter
-       
-     
-    def create_logo_bar(self):
-        """ Adds logo at the bottom.
-        """
-        self.logobar = QHBoxLayout()        
-        logo = QLabel()
-        pixmap = QPixmap(self.logoFilename)
-        logo.setPixmap(pixmap)
-        self.logobar.addWidget(logo)
-        self.outerLayout.addLayout(self.logobar)
-                
+                  
      
     def create_file_index_control(self):
         """ Creates a control to allow the frame from within an image stack to
@@ -774,19 +792,6 @@ class CAS_GUI(QMainWindow):
         """
         
         if self.processor is not None:
-        
-            # If manualImageTransfer is off We will use the queue that the image 
-            # acquisition thread has created to act as the input queue, this 
-            # avoids the need for any copying of images. However, we will then
-            # no longer have access to the raw images since we can't pull them off
-            # the queue without competing with the image processor, so for 
-            # example we can't make a proper raw recording.
-           
-            #if self.imageThread is not None: # and self.manualImageTransfer is False:
-            #    inputQueue = self.imageThread.get_image_queue()
-            #else:
-            #    inputQueue = None
-            #print(inputQueue)    
            
             # Create the processor
             self.imageProcessor = ImageProcessorThread(self.processor, 10, 10, inputQueue = self.inputQueue, 
@@ -878,8 +883,6 @@ class CAS_GUI(QMainWindow):
             if self.imageThread.get_num_images_in_auxillary_queue() >= self.buffering_num_frames:
                 self.stop_buffering()
                 
-            
-            
 
     def record(self):
         """ If we are recording, handles recording of a frame.
@@ -928,9 +931,8 @@ class CAS_GUI(QMainWindow):
 
 
        elif self.currentImage is not None and self.fallBackToRaw:
-           self.mainDisplay.set_image(self.currentImage)    
-  
-       
+           self.mainDisplay.set_image(self.currentImage)   
+         
         
     def update_camera_status(self):
        """ Updates real-time camera frame rate display. If the source
@@ -1076,6 +1078,9 @@ class CAS_GUI(QMainWindow):
         
 
     def record_options_changed(self):
+        """ Handles a change in recording options which necessitate a change
+        in which futher options are visible on the record panel.
+        """
 
         if self.recordRawCheck.isChecked():
             self.recordBufferCheck.show()
@@ -1087,9 +1092,7 @@ class CAS_GUI(QMainWindow):
             self.recordBufferSizeLabel.show()
         else:   
             self.recordBufferSpin.hide()
-            self.recordBufferSizeLabel.hide()
-
-            
+            self.recordBufferSizeLabel.hide()            
 
     
     def start_acquire(self):       
@@ -1117,11 +1120,8 @@ class CAS_GUI(QMainWindow):
         else:
             self.imageThread = ImageAcquisitionThread(self.camSource, self.rawImageBufferSize, self.acquisitionLock,imageQueue = self.inputQueue, cameraID = self.cameraIDSpin.value())
             
-
-
         # Sub-classes can overload create_processor to create processing threads
-        if self.imageThread is not None:
-            
+        if self.imageThread is not None:            
 
             self.cam = self.imageThread.get_camera()
     
@@ -1145,12 +1145,10 @@ class CAS_GUI(QMainWindow):
 
                 self.liveButton.setChecked(False)
                 
-                
-                
-                
-                
 
     def pause_acquire(self):
+        """ Pauses acquisition and processing threads
+        """
         if self.camOpen:
             self.isPaused = True
             self.liveButton.setChecked(False)
@@ -1161,6 +1159,8 @@ class CAS_GUI(QMainWindow):
 
 
     def resume_acquire(self):
+        """ Resumes acquisition and processing threads.
+        """
         if self.camOpen:
             self.isPaused = False
             if self.imageThread is not None:
@@ -1186,11 +1186,11 @@ class CAS_GUI(QMainWindow):
     
     def snap(self):    
         """ Saves current raw, processed and background images, if they
-        exist, to timestamped files in the snaps folder."""
-   
+        exist, to timestamped files in the snaps folder.
+        """   
         now = datetime.now()
         
-        timestamp = now.strftime('%Y_%m_%d_%H_%M_%S.tif')
+        timestamp = now.strftime('%Y_%m_%d_%H_%M_%S')
 
         rawFile = os.path.join(self.studyPath, timestamp + '_raw.tif')
         procFile = os.path.join(self.studyPath, timestamp + '_proc.tif')
@@ -1225,6 +1225,7 @@ class CAS_GUI(QMainWindow):
             # If there is no processed image, try saving the raw image
             self.save_raw_as()
 
+
     def save_raw_as(self):
         """ Requests filename then saves current raw image.
         """
@@ -1241,11 +1242,21 @@ class CAS_GUI(QMainWindow):
             QMessageBox.about(self, "Error", "There is no image to save.")  
             
         
-    def load_file(self):        
+    def load_file(self, filename = None):        
         """Gets a filename. If it is valid, switches to file mode, stops timers 
-        and image threads, loads in image and starts processor"""
+        and image threads, loads in image and starts processor.
+                
+        Can be called using keyword argument to automatically load a file, useful for
+        debugging.
+
+        Optioanl Keyword Arguments:
+            filename : str
+                       Full path to file to load, including extension
+        """
         
-        filename, filter = QFileDialog.getOpenFileName(parent=self, caption='Select file', filter='*.tif; *.png')
+        if filename is None:
+            filename, filter = QFileDialog.getOpenFileName(parent=self, caption='Select file', filter='*.tif; *.png')
+        
         if filename != "":
             if self.camOpen:
                 try:
@@ -1253,7 +1264,7 @@ class CAS_GUI(QMainWindow):
                     self.imageTimer.stop()
                     self.GUITimer.stop()
                 except:
-                    print("could not close camera")
+                    pass
             self.cam = FileInterface(filename = filename)
             if self.cam.is_file_open():
                 if self.imageProcessor is None: self.create_processors()   
@@ -1279,15 +1290,13 @@ class CAS_GUI(QMainWindow):
             self.cam.set_image_idx(self.fileIdxInput.value())
             self.update_file_processing()
         self.fileIdxSlider.setValue(self.fileIdxInput.value())
-        
-        
+                
         
     def file_index_slilder_changed(self, event): 
         """ Handles change in the slider which controls which image in a 
         multi-page tif is shown.
         """
-        self.fileIdxInput.setValue(self.fileIdxSlider.value())
-            
+        self.fileIdxInput.setValue(self.fileIdxSlider.value())            
 
    
     def update_file_processing(self):
@@ -1295,7 +1304,7 @@ class CAS_GUI(QMainWindow):
         to reprocessed the file (e.g. due to changed processing options)
         this function can be called. It processes the current raw image, 
         updates currentProcessedImage, and then refreshes displayed
-        images and GUI  
+        images and GUI . 
         """  
         if self.camTypes[self.camSourceCombo.currentIndex()] == self.FILE_TYPE:
             try:
@@ -1318,7 +1327,7 @@ class CAS_GUI(QMainWindow):
              
            
     def handle_gain_slider(self):
-        """ Called when gain slider is moved. Updates the camera exposure.
+        """ Called when gain slider is moved. Updates the camera gain.
         """
         self.gainInput.setValue(int(self.gainSlider.value()))
         if self.camOpen == True: 
@@ -1327,7 +1336,7 @@ class CAS_GUI(QMainWindow):
           
              
     def frame_rate_slider_changed(self):
-        """ Called when frame rate slider is moved. Updates the camera exposure.
+        """ Called when frame rate slider is moved. Updates the camera frame rate.
         """
         self.frameRateSlider.setValue(self.frameRateInput.value())
         if self.camOpen:             
@@ -1343,18 +1352,28 @@ class CAS_GUI(QMainWindow):
 
         if self.camOpen:
             self.end_acquire()
+            
         if self.imageProcessor is not None:
             self.imageProcessor.stop() 
+          
         
         active = mp.active_children()
         for child in active:
-            print(child)
-            child.terminate()
-           
+            child.terminate()           
              
 
     def save_image_ac(self, img, fileName):
-        """ Utility function to save 16 bit image 'img' to file 'fileName' with autoscaling """   
+        """ Utility function to save 16 bit image 'img' to file 'fileName' with autoscaling:
+            
+        Arguments:
+            img      : numpy.array
+                       image as numpy array, either 2D for monochrome or 3D
+                       for colour
+            fileName : full path to file, including extension. Extension will 
+                       determine file type, see PIL Image documentation for
+                       details. Must be a format that supports 16 bit images
+                       such as tif.
+        """   
         if fileName:
             img = img.astype('float')
             img = img - np.min(img)
@@ -1364,19 +1383,30 @@ class CAS_GUI(QMainWindow):
         
             
     def save_image(self, img, fileName):
-        """ Utility function to save image 'img' to file 'fileName' with no scaling"""
+        """ Utility function to save image 'img' to file 'fileName' with no scaling.
+        
+        Arguments:
+            img      : numpy.array
+                       image as numpy array, either 2D for monochrome or 3D
+                       for colour
+            fileName : full path to file, including extension. Extension will 
+                       determine file type, see PIL Image documentation for
+                       details.
+        """
         if fileName:            
             im = Image.fromarray(img)
             im.save(fileName)         
             
     
     def pil2np(self, im):
-        """ Utility to convert PIL image 'im' to numpy array"""
+        """ Utility to convert PIL image 'im' to numpy array
+        """
         return np.asarray(im)        
     
     
     def load_background(self):
-        """ Loads the default background file"""
+        """ Loads the default background file
+        """
         backIm = Image.open(self.defaultBackgroundFile)
         if backIm is not None:
              self.backgroundImage = self.pil2np(backIm)
@@ -1452,7 +1482,6 @@ class CAS_GUI(QMainWindow):
             self.recordFilename = (self.recordFolder / Path(now.strftime('record_%Y_%m_%d_%H_%M_%S.tif'))).as_posix()
         else:
             self.recordFilename = (self.recordFolder / Path(now.strftime('record_%Y_%m_%d_%H_%M_%S.avi'))).as_posix()
-
         
         self.recordBuffered = self.recordBufferCheck.isChecked() and self.recordRawCheck.isChecked()
         self.recordBufferSize = self.recordBufferSpin.value()
@@ -1461,14 +1490,18 @@ class CAS_GUI(QMainWindow):
         self.numFramesBuffered = 0
         
         if self.recordRawCheck.isChecked() or self.imageProcessor is None:
-            self.recordRaw = True
-            recordImage = self.currentImage
-            self.imageThread.flush_auxillary_buffer()
-            self.imageThread.set_use_auxillary_queue(True)
-            if self.recordBuffered:
-                # Create it one larger, otherwise image acquisition thread sees it
-                # full after last frame and tries to make space by removing the first frame
-                self.imageThread.set_auxillary_queue_size(self.recordBufferSize + 1)
+            if self.imageThread is not None:
+                self.recordRaw = True
+                recordImage = self.currentImage
+                self.imageThread.flush_auxillary_buffer()
+                self.imageThread.set_use_auxillary_queue(True)
+                if self.recordBuffered:
+                    # Create it one larger, otherwise image acquisition thread sees it
+                    # full after last frame and tries to make space by removing the first frame
+                    self.imageThread.set_auxillary_queue_size(self.recordBufferSize + 1)
+            else:
+                QMessageBox.about(self, "Error", f"Images not being acquired.")
+                    
         else:
             self.recordRaw = False
             recordImage = self.currentProcessedImage
@@ -1498,16 +1531,26 @@ class CAS_GUI(QMainWindow):
             
             
 
-    def create_video_file(self, exampleImage):
+    def create_video_file(self, exampleImage, frameRate = 20.0):
         """ Creates a MJPEG video file.
+        
+        Arguments:
+            exampleImage  : numpy.ndarray
+                            example image frame used to determine image size
+        
+        Keyword Arguments:
+            frameRate     : float
+                            framte rate of video file in Hz
+                            
+        Returns: 
+            Boolean       : True if video created successfully, otherwise False                    
         """
         
         try:
             fourcc = cv.VideoWriter_fourcc(*"MJPG")
             imSize = (np.shape(exampleImage)[1],np.shape(exampleImage)[0]) 
             self.numFramesRecorded = 0
-            self.videoOut = cv.VideoWriter(self.recordFilename, fourcc, 20.0, imSize)
-            
+            self.videoOut = cv.VideoWriter(self.recordFilename, fourcc, frameRate, imSize)            
             return True
 
         except:
@@ -1644,8 +1687,24 @@ class CAS_GUI(QMainWindow):
               
           if isinstance(obj, QRadioButton):
               name = obj.objectName()
-              value = obj.isChecked()  # get stored value from registry
+              value = obj.isChecked()  
               self.settings.setValue(name, value)
+
+          if isinstance(obj, LabelCheckboxWidget):
+              name = obj.checkbox.objectName()
+              state = obj.checkbox.isChecked()  
+              self.settings.setValue(name, state)
+
+          if isinstance(obj, RangeSpinBox):
+              name = obj.lower.objectName()
+              value = obj.lower.value() 
+              self.settings.setValue(name, value)
+              name = obj.upper.objectName()
+              value = obj.upper.value() 
+              self.settings.setValue(name, value)
+              
+    
+
 
 
     def gui_restore(self):
@@ -1697,17 +1756,37 @@ class CAS_GUI(QMainWindow):
               name = obj.objectName()
               value = self.settings.value(name)  # get stored value from registry
               if value != None:
-                  if obj.maximum() < float(value):
-                      obj.setMaximum(float(value))
-                  if obj.minimum() > float(value):
-                      obj.setMinimum(float(value))
+                  if obj.maximum() < int(value):
+                      obj.setMaximum(int(value))
+                  if obj.minimum() > int(value):
+                      obj.setMinimum(int(value))
                   obj.setValue(int(value)) 
     
           if isinstance(obj, QRadioButton):
              name = obj.objectName()
              value = self.settings.value(name)  # get stored value from registry
              if value != None:
-                 obj.setChecked(str2bool(value))      
+                 obj.setChecked(str2bool(value))   
+
+          if isinstance(obj, LabelCheckboxWidget):
+             name = obj.checkbox.objectName()
+             value = self.settings.value(name)  # get stored value from registry
+             if value != None:
+                 obj.checkbox.setChecked(str2bool(value))  
+
+
+          if isinstance(obj, RangeSpinBox):
+             name = obj.lower.objectName()
+             value = self.settings.value(name)  # get stored value from registry
+             if value != None:
+                 obj.lower.setValue(float(value) )
+             
+             name = obj.upper.objectName()
+             value = self.settings.value(name)  # get stored value from registry
+             if value != None:
+                 obj.upper.setValue(float(value) )
+                                     
+              
     
     ### Button Click Handlers   
 
@@ -1785,7 +1864,13 @@ class CAS_GUI(QMainWindow):
              
              
     def start_buffering(self, num_frames, finish_call):
-
+        """ Starts buffering of frames in the auxillary queue. Any existing
+        frames in the queue will be lost.
+        
+        Arguments:
+            num_frames  : total number of frames to buffer
+            finish_call : function to call once buffer is full.
+        """
         if self.imageProcessor is not None:
             self.buffering = True
             self.buffering_num_frames = num_frames
@@ -1793,15 +1878,21 @@ class CAS_GUI(QMainWindow):
             self.imageThread.set_auxillary_queue_size(num_frames)
             self.imageThread.flush_auxillary_buffer()
             self.imageThread.set_use_auxillary_queue(True)
+            
         
     def stop_buffering(self):
-        print("stop buffering")
+        """ Stops buffering of frames in the auxillary queue. Called 
+        automatically once buffer is full.
+        """
         self.buffering = False
         self.imageThread.set_use_auxillary_queue(False)
         if self.buffering_end_call is not None:
             self.buffering_end_call()
             
+            
     def get_auxillary_stack(self):
+        """ Obtains all the frames in the auxillary queue as a numpy array
+        """
         frames = []
         for i in range(self.buffering_num_frames):
             frames.append(self.imageThread.get_next_auxillary_image())  
@@ -1816,16 +1907,14 @@ class NewStudyDialog(QDialog):
     
     def __init__(self, res_path = None):
         super().__init__()
-        if res_path is None:
-            res_path = resPath
-
+        self.res_path = res_path
+        
         iconFilename = 'logo_256_red.png'
         
         if iconFilename is not None:
             self.setWindowIcon(QtGui.QIcon(iconFilename))
-
         
-        file=os.path.join(res_path, 'cas_modern.css')
+        file=os.path.join(self.res_path, 'cas_modern.css')
         with open(file,"r") as fh:
             self.setStyleSheet(fh.read())
 
@@ -1847,10 +1936,8 @@ class NewStudyDialog(QDialog):
         label1 = QLabel("Study Name:")
         label1.setProperty("subheader", "true")
         self.layout.addWidget(label1)
-
         
         self.layout.addWidget(self.studyNameInput)
-
           
         label2 = QLabel("Notes:")
         self.layout.addWidget(label2)
@@ -1862,12 +1949,10 @@ class NewStudyDialog(QDialog):
         self.setLayout(self.layout)
 
 
-
-
 # Helper utility 
 def str2bool(v):
         return v.lower() in ("yes", "true", "t", "1")
-   
+  
     
 # Launch the GUI
 if __name__ == '__main__':
@@ -1882,4 +1967,3 @@ if __name__ == '__main__':
    
    # When the window is closed, close everything
    sys.exit(app.exec_())
-

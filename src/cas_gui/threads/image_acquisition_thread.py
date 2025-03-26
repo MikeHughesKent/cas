@@ -5,20 +5,41 @@ Kent-CAS: Camera Acquisition System
 Threading class for image acqusition and buffering for use in GUIs or or 
 multi-threading applications.
 
-@author: Mike Hughes
-Applied Optics Group
-University of Kent
 """
 
 import queue
 import multiprocessing
 from multiprocessing import shared_memory
-
 import threading
 import time
 import importlib
 
 class ImageAcquisitionThread(threading.Thread):
+    """ Threading class to acquire images from camera.
+    
+    Arguments:
+        camName    : str
+                     name of camera class. The class must be in a module
+                     of the same name, either in the current path or
+                     in the cameras folder of CAS GUI
+                     
+    Keyword Arguments:    
+        bufferSize : int
+                     size of queue to store acquired images, default is 10
+        aquisitionLock : 
+        imageQueue : Queue or None
+                     Provide a queue here if direct access is required, 
+                     otherwise one will be created and used internally
+        auxillaryQueue : Queue or None
+                         Provide a queue here if direct access is required, 
+                         otherwise one will be created and used internally
+        cameraID   : int 
+                     If using an acquirer that has numbered camera IDs,
+                     provide this ID here for the desired camera (default = 0)
+        camArgs    : tuple
+                     Provide any additional arguments required by the 
+                     acquirer
+    """                 
     
     def __init__(self, camName, bufferSize = 10, acquisitionLock = None, 
                  imageQueue = None, auxillaryQueue = None, cameraID = 0, **camArgs):
@@ -27,22 +48,21 @@ class ImageAcquisitionThread(threading.Thread):
         # module of the same name) in the variable camName. This is dynamically
         # imported here and an instance created as self.cam.
         
+        # We first try looking in the cas_gui.cameras folders, otherwise
+        # we rely on the caller ensuring it is in the path
+        
         try:
             moduleName = "cas_gui.cameras." + camName
-            print(moduleName)
-
             camModule = importlib.import_module(moduleName)
-
             self.cam = getattr(camModule, camName)(**camArgs)
+
         except:    
             moduleName = camName
             camModule = importlib.import_module(moduleName)
-
             self.cam = getattr(camModule, camName)(**camArgs)
             
-            
-            
         self.acquisitionLock = acquisitionLock
+        
         super().__init__()
                 
         self.cam.open_camera(cameraID)
@@ -50,16 +70,18 @@ class ImageAcquisitionThread(threading.Thread):
         
         self.bufferSize = bufferSize
                 
+        # Main queue for images for display and processing
         self.imageQueue = imageQueue
         if self.imageQueue is None:
             self.imageQueue = multiprocessing.Queue(maxsize=self.bufferSize)
+        self.numDroppedFrames = 0
             
+        # Second queue that is used for recording stacks etc.    
         self.auxillaryQueue = auxillaryQueue    
         if self.auxillaryQueue is None:
             self.auxillaryQueue = queue.Queue(maxsize=self.bufferSize)    
             
         self.numAuxillaryDroppedFrames = 0
-        
         self.useAuxillaryQueue = False
         
         self.lastFrameTime = 0
@@ -68,10 +90,7 @@ class ImageAcquisitionThread(threading.Thread):
         self.currentFrameNumber = 0
         self.isPaused = False
         self.isOpen = True
-        #self.cam = None
-        
         self.numRemoveWhenFull = 1
-        self.numDroppedFrames = 0
         
         
     def run(self):
@@ -96,8 +115,6 @@ class ImageAcquisitionThread(threading.Thread):
                             
                     if self.acquisitionLock is not None: self.acquisitionLock.release()
         
-                
-
                 # Try to get an image. If there is no image ready, this should
                 # return None.
                 frame = self.cam.get_image()
@@ -105,9 +122,14 @@ class ImageAcquisitionThread(threading.Thread):
                 if frame is not None:
 
                     self.currentFrameNumber = self.currentFrameNumber + 1
+        
+                    # If we have a new frame, place is in main queue. If we are
+                    # using an auxillary queue at the moment, we also put a copy
+                    # in there
                     self.imageQueue.put(frame)
                     if self.useAuxillaryQueue and (not self.auxillaryQueue.full()):
                         self.auxillaryQueue.put(frame) 
+                    
                     self.currentFrame = frame
                     self.currentFrameTime = time.perf_counter()
                     self.frameStepTime = self.currentFrameTime - self.lastFrameTime
@@ -115,7 +137,7 @@ class ImageAcquisitionThread(threading.Thread):
                 else:
                     time.sleep(0.002)
             else:
-                time.sleep(0.01)
+                time.sleep(0.002)
         
     def get_camera(self):
         """ Returns a reference to the camera object.
@@ -197,13 +219,13 @@ class ImageAcquisitionThread(threading.Thread):
         
         while self.is_image_ready() is False:
             pass
+        
         try:
             if self.acquisitionLock is not None: self.acquisitionLock.acquire()
             im = self.imageQueue.get()
             if self.acquisitionLock is not None: self.acquisitionLock.release()
 
         except queue.Empty:
-            print("Error - no image")
             return None
         
         return im
@@ -263,12 +285,11 @@ class ImageAcquisitionThread(threading.Thread):
             try:
                 self.auxillaryQueue.get_nowait()  
             except:
-                pass
-    
+                pass   
     
                 
     def pause(self):
-        """ Call to pause image acquisition.
+        """ Pauses image acquisition.
         """
         self.isPaused = True
         self.flush_buffer()
@@ -276,7 +297,7 @@ class ImageAcquisitionThread(threading.Thread):
     
 
     def resume(self):
-        """ Call to resume a paused image acquisition.
+        """ Resumes a paused image acquisition.
         """
         self.isPaused = False
         return    
@@ -293,3 +314,6 @@ class ImageAcquisitionThread(threading.Thread):
 
             self.cam.dispose()
             del(self.cam)
+            
+
+            
