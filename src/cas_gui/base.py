@@ -125,8 +125,6 @@ class CAS_GUI(QMainWindow):
     recordBuffer = []
     imageId = 0
     camFile = f"../res/cameras.csv"
-
-    
     
     def __init__(self, parent = None):   
         """ Initial setup of GUI.
@@ -261,7 +259,7 @@ class CAS_GUI(QMainWindow):
         self.sourceButton = self.create_menu_button("Image Source", QIcon(os.path.join(self.resPath, 'icons', 'camera_white.svg')), self.source_button_clicked, True, menuButton = True)
         self.snapButton = self.create_menu_button("Snap Image", QIcon(os.path.join(self.resPath, 'icons', 'download_white.svg')), self.snap_button_clicked, False )
         self.saveAsButton = self.create_menu_button("Save Image As", QIcon(os.path.join(self.resPath, 'icons', 'save_white.svg')), self.save_as_button_clicked, False)
-        self.recordButton = self.create_menu_button("Record", QIcon(os.path.join(self.resPath, 'icons', 'film_white.svg')), self.record_button_clicked, False, menuButton = True)
+        self.recordButton = self.create_menu_button("Record", QIcon(os.path.join(self.resPath, 'icons', 'film_white.svg')), self.record_button_clicked, True, menuButton = True)
         self.settingsButton = self.create_menu_button("Settings", QIcon(os.path.join(self.resPath, 'icons', 'settings_white.svg')), self.settings_button_clicked, True, menuButton = True)
         self.menuLayout.addStretch()
         self.exitButton = self.create_menu_button("Exit", QIcon(os.path.join(self.resPath, 'icons', 'exit_white.svg')), self.exit_button_clicked, False)
