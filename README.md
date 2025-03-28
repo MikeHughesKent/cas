@@ -9,7 +9,11 @@ processing images from cameras or camera-like systems.
 
 
 
-![Screenshot of CAS GUI interface](screenshots/cas_screenshot1.png)
+![Screenshot of CAS GUI interface](screenshots/cas_screenshot3.png)
+
+GUIs are built using PyQt5. Images are displayed using an instance of 
+[ImageDisplayQT](https://www.github.com/mikehugheskent/imagedisplayqt), a widget 
+for displaying scientific images.
 
 
 
@@ -24,7 +28,7 @@ Simple examples of GUIs can be found in the [examples folder](https://github.com
 
 ## Rough Guide
 
-The CAS-GUI class (in src/cas_gui/base.py) is the base class for camera GUIs. This can be run 
+The CAS-GUI class, in [src/cas_gui/base.py](https://github.com/MikeHughesKent/cas/blob/main/src/cas_gui/base.py), is the base class for camera GUIs. This can be run 
 as is, and will provide a simple camera image viewer with the possibility to 
 adjust exposure, frame rate and gain. Select the input camera from the 
 drop-down menu in the 'Source' menu and click 'Live Imaging' to begin. 
@@ -34,31 +38,16 @@ can load a sequence of images from a tif stack in order to simulate camera
 acquisition. Alternatively, select the 'File' source to load in a saved image
 or tif stack.
 
-Classes for handling camera communications are in the 'src/cas_gui/cameras' folder. For 
+Classes for handling camera communications are in the [src/cas_gui/cameras](https://github.com/MikeHughesKent/cas/blob/main/src/cas_gui/cameras) folder. For 
 a specific camera, a new class must be created that inherits from GenericCamera. 
 Override the functions from GenericCamera to implement the relevant 
 functionality. See the other camera python files in the folder for examples.
-
-GUIs are built using PyQt5. Images are displayed using an instance of 
-[ImageDisplayQT](https://www.github.com/mikehugheskent/imagedisplayqt), a widget 
-for displaying scientific images.
 
 To create a GUI for a specific purpose, create a new class that inherits from 
 CAS_GUI in base.py. Three simple example are provided in the examples folder - 
 [gui_example](https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example.py), 
 [gui_example_multi_frame](https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example_multi_frame.py)
 and [gui_example_multi_core](https://github.com/MikeHughesKent/cas/blob/main/examples/gui_example_multi_core.py).
-
-gui_example demonstrates how a Gaussian smoothing filter can be applied to the 
-images grabbed from a camera, while the gui_example_multi_frame demonstrates 
-averaging of frames. gui_example_multi_core is the same as gui_example except
-that the processing is performed on a different core for improved speed using
-multiprocessing. These GUIs can be used as templates to begin building GUIs with 
-custom image processing pipelines.
-
-There is also an example of a more complex GUI, [CAS_GUI_Bundle](https://github.com/MikeHughesKent/cas/blob/main/src/cas_gui/subclasses/cas_bundle.py), 
-in the subclasses folder, but this is not fully documented.
-
 
 ## Supported Cameras
 
