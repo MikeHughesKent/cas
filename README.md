@@ -1,23 +1,25 @@
-# CAS and CAS-GUI - Kent Camera Acquisition System
+# CAS and CAS GUI 
 
-CAS is hardware abstraction layers for camera acquisition and control in Python.
-
-CAS-GUI is a framework for building graphical user interfaces in Python that 
-involves acquiring, processing and displaying images from cameras or 
-camera-type systems
-
-
-CAS and CAS-GUI are developed in 
-[Mike Hughes' lab](https://research.kent.ac.uk/applied-optics/hughes) 
+CAS GUI is a framework for rapidly building imaging system GUIs in Python. Originally
+designed for use in an optical imaging reseach in [Mike Hughes' lab](https://research.kent.ac.uk/applied-optics/hughes) 
 in the [Applied Optics Group](https://research.kent.ac.uk/applied-optics/), 
-School of Physics & Astronomy, University of Kent.
+University of Kent, it could be used to help
+develop GUIs for a wide range of applications which involve capturing and
+processing images from cameras or camera-like systems.
 
-We use CAS-GUI as the basis of several imaging systems, including endomicroscopes 
-and holographic microscopes. External users are welcome to make use of this 
-code for other purposes, but be aware that it is not currently fully documented or 
-tested outside of our specific applications. There are three examples of custom 
-GUIs in the 'examples' folder. and if you  have an interesting use case we can 
-provide some limited support.
+
+
+![Screenshot of CAS GUI interface](screenshots/cas_screenshot1.png)
+
+
+
+
+## Documentation and Examples
+
+Documentation is on [readthedocs](https://cas-gui.readthedocs.io/en/latest/).
+
+Simple examples of GUIs can be found in the [examples folder](https://github.com/MikeHughesKent/cas/tree/main/examples)
+
 
 
 ## Rough Guide
