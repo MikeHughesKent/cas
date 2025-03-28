@@ -43,10 +43,10 @@ instead specify a filename.
 
 Clicking 'Record' opens the recording menu. The folder to save recordings to is, by default, the current
 study folder, but can be changed using the 'Choose Folder' button. The 'Record Raw' toggle only has an impact
-if the base class in subclassed to include an image processor. 'Record Tif', if checked, will results in a Tif Stack,
-otherwise images will be saved to an AVI. Checking Buffered will cause the GUI to capture the specified number 
+if the base class is subclassed to include an image processor. 'Record Tif', if checked, will result in a Tif Stack,
+otherwise images will be saved to an AVI. Checking 'Buffered' will cause the GUI to capture the specified number 
 of images to memory before saving. If this is not toggled, the GUI will save continuously to the file until the 
-'Stop Recording' button, which appears once recording starts, is clicked. This may drop frame depending on the 
+'Stop Recording' button, which appears once recording starts, is clicked. This may drop frames depending on the 
 disk write speed and the frame rate. 
 
 

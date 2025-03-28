@@ -47,8 +47,11 @@
               <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="using_gui.html">Using the Default GUI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="menus.html">Adding Menus and Menu Items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multicore.html">Using Multiple Cores</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cameras.html">Implementing Cameras</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced.html">Advanced Customisation</a></li>
 </ul>
 
         </div>
@@ -77,7 +80,21 @@
              
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h1>
-<p>The project is hosted on <a class="reference external" href="https://github.com/MikeHughesKent/ImageDisplayQT/">github</a>.</p>
+<p>Install the latest stable release from PyPI using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">cas</span>
+</pre></div>
+</div>
+<p>Using pip install should find and install all the dependencies.</p>
+<p>Note that the pip install doesn’t include the examples and tests which still
+need to be <a class="reference external" href="http://www.github.com/MikeHughesKent/cas">downloaded from Github</a>.</p>
+<p>If manually downloading the source from Github, rather than from PyPI, you will need to
+either manually check you have the requirements
+installed, or navigate to the cas folder on your machine and run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">r</span> <span class="n">requirements</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p>to install the dependencies. You may wish to create a virtual environment
+using Conda/venv first to avoid conflicts with your existing python setup.</p>
 </section>
 
 

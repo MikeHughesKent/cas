@@ -1,6 +1,6 @@
-CAS and CAS-GUI
+CAS and CAS GUI
 ====================================
-CAS-GUI is a framework for building graphical user interfaces in Python,
+CAS GUI is a framework for building graphical user interfaces in Python,
 specifically for applications that involve acquiring, processing and displaying 
 images from cameras or camera-type systems.
 
@@ -25,6 +25,7 @@ Contents
    menus
    multicore
    cameras
+   advanced
    
    
 * :ref:`genindex`

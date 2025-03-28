@@ -1,9 +1,9 @@
 Getting Started
 ===============
 
-The base class for all CAS-GUI based GUIs is CAS_GUI which can be found in the src/cas_gui/base.py file. 
+The base class for all CAS GUI based GUIs is CAS_GUI which can be found in the src/cas_gui/base.py file. 
 Running this file will create an instance of the base class which can be used as a simple camera viewer,
-with save and record capabilities. Run this first to ensure that CAS and CAS-GUI are correctly 
+with save and record capabilities. Run this first to ensure that CAS and CAS GUI are correctly 
 installed on your system.
 
 The camera source can be selected by opening the 'Image Source' menu and selecting the desired
@@ -16,7 +16,7 @@ helper functions to simplify the process of adding GUI elements.
 A Simple Custom GUI
 ^^^^^^^^^^^^^^^^^^^
 
-To implement a custom GUI, CAS-GUI is sub-classed. A bare-bones example is as follows::
+To implement a custom GUI, CAS GUI is sub-classed. A bare-bones example is as follows::
 
     import sys
     from PyQt5.QtWidgets import QApplication
@@ -38,7 +38,7 @@ To implement a custom GUI, CAS-GUI is sub-classed. A bare-bones example is as fo
         # When the window is closed, close everything
         sys.exit(app.exec_())
          
-This will create an exact clone of CAS-GUI with no additional functionality. Note that CAS_GUI is a subclass
+This will create an exact clone of CAS GUI with no additional functionality. Note that CAS_GUI is a subclass
 of a PyQT ``QMainWindow`` and so maintains all the functionality of that class.
 
 We must specify the path to the resources, including icons etc, and the example simulated camera data.
@@ -58,7 +58,7 @@ It is also useful at this point to set two additional parameters::
     authorName = "Me"
     appName = "My Example GUI"
     
-Setting unique values here will mean that any settings saved by your GUI will be distinct from settings saved by other GUIs based on CAS-GUI on the same machine.
+Setting unique values here will mean that any settings saved by your GUI will be distinct from settings saved by other GUIs based on CAS GUI on the same machine.
  
 Adding Processing
 ^^^^^^^^^^^^^^^^^ 
@@ -68,7 +68,7 @@ This takes the raw image as the first parameter and returns the processed image.
 
     processor = name
     
-where name is a reference to the class (not an instance of the class - an instance will be created by CAS-GUI).    
+where name is a reference to the class (not an instance of the class - an instance will be created by CAS GUI).    
     
 A minimal fully-working examples that simply flips the images is given below. 
 Note that we have imported ``ImageProcessorClass`` and also ```numpy`` since images in CAS_GUI are, by default, stored as 2D or 3D numpy arrays.

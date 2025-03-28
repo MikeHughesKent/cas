@@ -12,7 +12,6 @@ import numpy.ma as ma
 
 from PIL import Image
 
-from tqdm import tqdm
 
 
 def load_image(filename):
@@ -303,7 +302,7 @@ def max_channels(img):
         
     
 
-def load_stack(folder, status = True):
+def load_stack(folder):
     """ Loads a stack of images from a folder into a 3D numpy array
     
     Arguments:
@@ -327,14 +326,9 @@ def load_stack(folder, status = True):
     data = np.zeros((nImages, h, w), dtype = testIm.dtype)
    
    
-    if status: print(f"Loading files from '{folder}'")
     
-    if status:
-        for idx, image_file in enumerate(tqdm(image_files)):            
-            data[idx,:,:] = np.array(Image.open(os.path.join(folder,image_file)))
-    else:
-        for idx, image_file in enumerate(image_files):            
-            data[idx,:,:] = np.array(Image.open(os.path.join(folder,image_file)))        
+    for idx, image_file in enumerate(image_files):            
+        data[idx,:,:] = np.array(Image.open(os.path.join(folder,image_file)))        
         
     return data   
   

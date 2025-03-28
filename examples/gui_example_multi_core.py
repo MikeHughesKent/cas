@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Kent-CAS-GUI Example
+CAS GUI Multicore Example
 
-This example shows how to extend CAS GUI to create a simple application
-to process and display images from a camera. 
-
-In this example, the processing is performed using a separate process, 
-which should lead to an increase in the maximum achievable frame rate before 
+This example shows how to use a separate core for the processing which 
+should lead to an increase in the maximum achievable frame rate before 
 frames are dropped.
-
 """
 
 import sys 
@@ -48,7 +44,6 @@ class GaussianFilter(ImageProcessorClass):
         return outputFrame
     
 
-
 class example_GUI(CAS_GUI):
 
     # If the class name is changed, must also change the window = example_GUI()
@@ -62,20 +57,20 @@ class example_GUI(CAS_GUI):
     resPath = "..//res"
     
     # We are going to make use of multiple cores by running the processing
-    # on a different core to the GUI and image acquirer
+    # on a different core to the GUI and image acquirer. We will not use shared
+    # memory as we do not have large images so can work with queues and avoid
+    # dropped frames
     multiCore = True
+    sharedMemory = False
     
     # Define the processor class which will be used by the ImageProcessor thread
     # to process the images    
     processor = GaussianFilter
     
     # GUI window title
-    windowTitle = "Kent Camera Acquisition System: Example with multi cores"
+    windowTitle = "Camera Acquisition System: Example with multi cores"
         
-    # Change to define available cameras interface and their display names in the drop-down menu
-    # camNames = ['File', 'Simulated Camera', 'Flea Camera', 'Kiralux', 'Thorlabs DCX', 'Webcam', 'Colour Webcam']
-    # camSources = ['ProcessorInterface', 'SimulatedCamera', 'FleaCameraInterface', 'KiraluxCamera', 'DCXCameraInterface', 'WebCamera', 'WebCameraColour']
-          
+ 
     # Default source for simulated camera
     sourceFilename = Path('data/vid_example.tif')           
         

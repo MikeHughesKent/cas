@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-CAS-GUI-Base
+CAS GUI Base
 
 CAS GUI is a graphical user interface built around the 
 Camera Acquisition System (CAS).
@@ -50,8 +50,6 @@ from cas_gui.utils.im_tools import to8bit, to16bit
 from cas_gui.widgets.label_checkbox_widget import LabelCheckboxWidget    
 from cas_gui.widgets.range_spin_box import RangeSpinBox
 
-cuda = True                 # Set to False to disable use of GPU
-multicore = True            # Set to True to run processor on a different core
 
 class CAS_GUI(QMainWindow):
 
@@ -80,12 +78,11 @@ class CAS_GUI(QMainWindow):
             
 
     # Other Options
-    restoreGUI = True
-    manualImageTransfer = True
-    fallBackToRaw = True
-    multiCore = False
-    sharedMemory = True
-    showInfoBar = True    
+    restoreGUI = True         # True to load widget values from registry
+    fallBackToRaw = True      # True to display raw images if no processed images
+    multiCore = False         # True to run processing on a different core
+    sharedMemory = False      # True to use shared memory to transfer processed image when using multiCore
+    showInfoBar = True        # True to show bar at bottom of screen
     defaultBackgroundFile = "background.tif"
     sharedMemoryArraySize = (2048,2048)
 
@@ -803,7 +800,7 @@ class CAS_GUI(QMainWindow):
             self.processing_options_changed()
         
             # Start the thread
-            if self.imageProcessor is not None:  # and self.multiCore is False:
+            if self.imageProcessor is not None: 
                 self.imageProcessor.start()
                                 
     
@@ -1701,11 +1698,8 @@ class CAS_GUI(QMainWindow):
               self.settings.setValue(name, value)
               name = obj.upper.objectName()
               value = obj.upper.value() 
-              self.settings.setValue(name, value)
-              
+              self.settings.setValue(name, value)            
     
-
-
 
     def gui_restore(self):
       """ Load GUI widgets values/states from registry"""

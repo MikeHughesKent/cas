@@ -25,13 +25,13 @@ base class this will display the raw images. Click 'Live Imaging' again to stop 
 Image Display
 ^^^^^^^^^^^^^
 Hover over the image to view the pixel value in the information bar underneath the image. The pixel value range and mean are also shown. 
-Click and drag to create a region of interest; the pixel value range and mean will for the ROI will also then be provided 
-in the information bar. Use pinch zoom or a mouse wheel to zoom in and out.
+Click and drag to create a region of interest; the pixel value range and mean for the ROI will also then be provided 
+in the information bar. Click again the image to clear the ROI. Use pinch zoom or a mouse wheel to zoom in and out.
 
 Studies
 ^^^^^^^
 Studies are used to organise saved images and videos. When started, the study is set as 'default'. To create
-a new study click 'New Study'. A dialog box allows use to specify the name of the study, and, optionally, a description.
+a new study click 'New Study'. A dialog box allows users to specify the name of the study, and, optionally, a description.
 
 A new subfolder in the studies folder will be created with the specified name.
 
@@ -43,10 +43,10 @@ instead specify a filename.
 
 Clicking 'Record' opens the recording menu. The folder to save recordings to is, by default, the current
 study folder, but can be changed using the 'Choose Folder' button. The 'Record Raw' toggle only has an impact
-if the base class in subclassed to include an image processor. 'Record Tif', if checked, will results in a Tif Stack,
-otherwise images will be saved to an AVI. Checking Buffered will cause the GUI to capture the specified number 
+if the base class is subclassed to include an image processor. 'Record Tif', if checked, will result in a Tif Stack,
+otherwise images will be saved to an AVI. Checking 'Buffered' will cause the GUI to capture the specified number 
 of images to memory before saving. If this is not toggled, the GUI will save continuously to the file until the 
-'Stop Recording' button, which appears once recording starts, is clicked. This may drop frame depending on the 
+'Stop Recording' button, which appears once recording starts, is clicked. This may drop frames depending on the 
 disk write speed and the frame rate. 
 
 

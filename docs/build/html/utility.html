@@ -45,7 +45,11 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="using_gui.html">Using the Default GUI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="menus.html">Adding Menus and Menu Items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multicore.html">Using Multiple Cores</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cameras.html">Implementing Cameras</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced.html">Advanced Customisation</a></li>
 </ul>
 
         </div>
@@ -75,38 +79,7 @@
   <section id="utility-functions">
 <h1>Utility Functions<a class="headerlink" href="#utility-functions" title="Permalink to this heading"></a></h1>
 <p>The CAS_GUI class contains a number of utility function that may be useful
-to call directly.
-To run the image processing on a separate core, we set the parameter:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">multiCore</span> <span class="o">=</span> <span class="kc">True</span>
-</pre></div>
-</div>
-<p>CAS-GUI will then handle starting a process. For very simple processors,
-which do not require changes of parameters or calibration, this is all that
-is required.</p>
-<p>CAS-GUI first creates an instance of the image processor class on the local
-proces and then pipes it to the other process via a queue. This means that any
-subsequent changes to the local copy of the image processor class will not be
-reflected in the copy in the other process. It is necessary to call the
-<code class="docutils literal notranslate"><span class="pre">update_settings()</span></code> method of the instance of <code class="docutils literal notranslate"><span class="pre">ImageProcessorThread</span></code> a
-reference to which is stored in the <code class="docutils literal notranslate"><span class="pre">self.processor</span></code> parameter. Therefore, following
-any change of settings, you should call:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">processor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">processor</span><span class="o">.</span><span class="n">update_settings</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>The easiest way to handle this is to have a single function that handles all
-changes in settings-related widgets, allowing this to be called once after
-all changes have been made. A check that <code class="docutils literal notranslate"><span class="pre">self.processor</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">None</span></code> should
-always be made because the processor is only instantiated when acquisition begins.</p>
-<p><code class="docutils literal notranslate"><span class="pre">update_settings()</span></code> is a reasonably slow function, since the entire <code class="docutils literal notranslate"><span class="pre">ImageProcessorThread</span></code>
-must be pickled, piped to the other process, and depickled. Although this is not noticeable
-for occasional dicrete settings changes, it may becomes obvious if the user is able
-to continuously adjust some setting and observe the results (e.g. by dragging a slider).
-A faster way to update settings on both the local and other copy of the Image Processor Class
-is to to use <code class="docutils literal notranslate"><span class="pre">pipe_message()</span></code>. This takes two arguments, the first is the name of a method
-of the Image Processor Class to call, and the second is a tuple of arguments to pass to this method.
-This means that setter methods can be created in the Image Processor Class to handle and settings
-changes that need to be made rapidly.</p>
+to call directly.</p>
 </section>
 
 

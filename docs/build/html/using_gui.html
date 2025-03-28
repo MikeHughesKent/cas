@@ -20,7 +20,9 @@
         <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Adding Menus and Menu Items" href="menus.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -42,12 +44,21 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Using the Default GUI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#selecting-the-image-source">Selecting the Image Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#starting-and-stopping-acquisition">Starting and Stopping Acquisition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#image-display">Image Display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#studies">Studies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#saving-and-recording">Saving and Recording</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="menus.html">Adding Menus and Menu Items</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multicore.html">Using Multiple Cores</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cameras.html">Implementing Cameras</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced.html">Advanced Customisation</a></li>
 </ul>
 
         </div>
@@ -95,13 +106,13 @@ base class this will display the raw images. Click ‘Live Imaging’ again to s
 <section id="image-display">
 <h2>Image Display<a class="headerlink" href="#image-display" title="Permalink to this heading"></a></h2>
 <p>Hover over the image to view the pixel value in the information bar underneath the image. The pixel value range and mean are also shown.
-Click and drag to create a region of interest; the pixel value range and mean will for the ROI will also then be provided
-in the information bar. Use pinch zoom or a mouse wheel to zoom in and out.</p>
+Click and drag to create a region of interest; the pixel value range and mean for the ROI will also then be provided
+in the information bar. Click again the image to clear the ROI. Use pinch zoom or a mouse wheel to zoom in and out.</p>
 </section>
 <section id="studies">
 <h2>Studies<a class="headerlink" href="#studies" title="Permalink to this heading"></a></h2>
 <p>Studies are used to organise saved images and videos. When started, the study is set as ‘default’. To create
-a new study click ‘New Study’. A dialog box allows use to specify the name of the study, and, optionally, a description.</p>
+a new study click ‘New Study’. A dialog box allows users to specify the name of the study, and, optionally, a description.</p>
 <p>A new subfolder in the studies folder will be created with the specified name.</p>
 </section>
 <section id="saving-and-recording">
@@ -110,10 +121,10 @@ a new study click ‘New Study’. A dialog box allows use to specify the name o
 instead specify a filename.</p>
 <p>Clicking ‘Record’ opens the recording menu. The folder to save recordings to is, by default, the current
 study folder, but can be changed using the ‘Choose Folder’ button. The ‘Record Raw’ toggle only has an impact
-if the base class in subclassed to include an image processor. ‘Record Tif’, if checked, will results in a Tif Stack,
-otherwise images will be saved to an AVI. Checking Buffered will cause the GUI to capture the specified number
+if the base class is subclassed to include an image processor. ‘Record Tif’, if checked, will result in a Tif Stack,
+otherwise images will be saved to an AVI. Checking ‘Buffered’ will cause the GUI to capture the specified number
 of images to memory before saving. If this is not toggled, the GUI will save continuously to the file until the
-‘Stop Recording’ button, which appears once recording starts, is clicked. This may drop frame depending on the
+‘Stop Recording’ button, which appears once recording starts, is clicked. This may drop frames depending on the
 disk write speed and the frame rate.</p>
 </section>
 </section>
@@ -121,7 +132,10 @@ disk write speed and the frame rate.</p>
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="menus.html" class="btn btn-neutral float-right" title="Adding Menus and Menu Items" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 

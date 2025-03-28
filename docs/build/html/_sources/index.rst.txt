@@ -25,6 +25,7 @@ Contents
    menus
    multicore
    cameras
+   advanced
    
    
 * :ref:`genindex`

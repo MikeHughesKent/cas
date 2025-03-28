@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 ImageProcessorThread
-Part of Kent CAS-GUI: Camera Acquisition System GUI
+Part of CAS GUI: Camera Acquisition System GUI
 
 Threading class for image processing for use in GUIs or or 
 multi-threading applications. Sub-class and implement process_frame
@@ -69,6 +69,7 @@ class ImageProcessorThread(threading.Thread):
         # to start a process on that core.
         
         if self.multiCore:
+            
             # Queue for sending updates on how to do the processing
             self.updateQueue = multiprocessing.Queue()
             self.messageQueue = multiprocessing.Queue()
@@ -143,6 +144,8 @@ class ImageProcessorThread(threading.Thread):
 
                               
                  else:  # self.useSharedMemory = False
+                      # If we are not using shared memory we don't need to do anything here because
+                      # the processed images will be put straight in the output queue by the ImageProcessorProcess
                       time.sleep(0.01)
              
              else:    
@@ -213,6 +216,17 @@ class ImageProcessorThread(threading.Thread):
          
                    
     def pipe_message(self, command, parameter):
+        """ Sends a message to update an attribute or call a function in the
+        ImageProcessorClass.
+        
+        Arguments:
+            command   : str
+                        name of attribute or function
+            parameter : tuple
+                        if calling a function, this is a tuple containing
+                        the arguments to be passed to the function. If setting
+                        an attribute, this is the value to set
+        """
         if self.multiCore:
             self.messageQueue.put((command, parameter))
         else:

@@ -73,6 +73,7 @@ class ImageProcessorProcess(multiprocessing.Process):
 
         while True:
             
+            
             t0 = time.perf_counter()    
             
             # Receive an updated instance of the processor object            
@@ -138,7 +139,7 @@ class ImageProcessorProcess(multiprocessing.Process):
                     
                     
                     elif self.useSharedMemory:
-                        
+                        print("using shared memory")
                         if outImage is not None:
   
                             # Create the shared memory if we haven't already done so

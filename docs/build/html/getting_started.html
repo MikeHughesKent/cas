@@ -21,7 +21,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Adding Menus and Menu Items" href="menus.html" />
+    <link rel="next" title="Using the Default GUI" href="using_gui.html" />
     <link rel="prev" title="Installation" href="installation.html" /> 
 </head>
 
@@ -51,9 +51,11 @@
 <li class="toctree-l2"><a class="reference internal" href="#adding-processing">Adding Processing</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="using_gui.html">Using the Default GUI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="menus.html">Adding Menus and Menu Items</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multicore.html">Using Multiple Cores</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cameras.html">Implementing Cameras</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced.html">Advanced Customisation</a></li>
 </ul>
 
         </div>
@@ -82,9 +84,9 @@
              
   <section id="getting-started">
 <h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this heading"></a></h1>
-<p>The base class for all CAS-GUI based GUIs is CAS_GUI which can be found in the src/cas_gui/base.py file.
+<p>The base class for all CAS GUI based GUIs is CAS_GUI which can be found in the src/cas_gui/base.py file.
 Running this file will create an instance of the base class which can be used as a simple camera viewer,
-with save and record capabilities. Run this first to ensure that CAS and CAS-GUI are correctly
+with save and record capabilities. Run this first to ensure that CAS and CAS GUI are correctly
 installed on your system.</p>
 <p>The camera source can be selected by opening the ‘Image Source’ menu and selecting the desired
 camera from the drop-down menu. ‘Simulated camera’ will display a sequence of frames containg
@@ -93,7 +95,7 @@ the digits 0-9 and should be tested first.</p>
 helper functions to simplify the process of adding GUI elements.</p>
 <section id="a-simple-custom-gui">
 <h2>A Simple Custom GUI<a class="headerlink" href="#a-simple-custom-gui" title="Permalink to this heading"></a></h2>
-<p>To implement a custom GUI, CAS-GUI is sub-classed. A bare-bones example is as follows:</p>
+<p>To implement a custom GUI, CAS GUI is sub-classed. A bare-bones example is as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">from</span> <span class="nn">PyQt5.QtWidgets</span> <span class="kn">import</span> <span class="n">QApplication</span>
 <span class="kn">from</span> <span class="nn">cas_gui.base</span> <span class="kn">import</span> <span class="n">CAS_GUI</span>
@@ -115,7 +117,7 @@ helper functions to simplify the process of adding GUI elements.</p>
     <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">exec_</span><span class="p">())</span>
 </pre></div>
 </div>
-<p>This will create an exact clone of CAS-GUI with no additional functionality. Note that CAS_GUI is a subclass
+<p>This will create an exact clone of CAS GUI with no additional functionality. Note that CAS_GUI is a subclass
 of a PyQT <code class="docutils literal notranslate"><span class="pre">QMainWindow</span></code> and so maintains all the functionality of that class.</p>
 <p>We must specify the path to the resources, including icons etc, and the example simulated camera data.</p>
 <p>One of the first things we might like to do is change the name of the window. We do this
@@ -132,7 +134,7 @@ it is better to use the abstracted approach where possible to avoid needing to u
 <span class="n">appName</span> <span class="o">=</span> <span class="s2">&quot;My Example GUI&quot;</span>
 </pre></div>
 </div>
-<p>Setting unique values here will mean that any settings saved by your GUI will be distinct from settings saved by other GUIs based on CAS-GUI on the same machine.</p>
+<p>Setting unique values here will mean that any settings saved by your GUI will be distinct from settings saved by other GUIs based on CAS GUI on the same machine.</p>
 </section>
 <section id="adding-processing">
 <h2>Adding Processing<a class="headerlink" href="#adding-processing" title="Permalink to this heading"></a></h2>
@@ -141,7 +143,7 @@ This takes the raw image as the first parameter and returns the processed image.
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">processor</span> <span class="o">=</span> <span class="n">name</span>
 </pre></div>
 </div>
-<p>where name is a reference to the class (not an instance of the class - an instance will be created by CAS-GUI).</p>
+<p>where name is a reference to the class (not an instance of the class - an instance will be created by CAS GUI).</p>
 <p>A minimal fully-working examples that simply flips the images is given below.
 Note that we have imported <code class="docutils literal notranslate"><span class="pre">ImageProcessorClass</span></code> and also <code class="docutils literal notranslate"><span class="pre">`numpy</span></code> since images in CAS_GUI are, by default, stored as 2D or 3D numpy arrays.</p>
 <p>We created a <code class="docutils literal notranslate"><span class="pre">MyProcessorClass</span></code> which inherits from <code class="docutils literal notranslate"><span class="pre">ImageProcessorClass</span></code> and have implemented the <code class="docutils literal notranslate"><span class="pre">process</span></code> method which will be called by the GUI every time an image requires processing. This must take
@@ -206,7 +208,7 @@ the image acquisition loop, but on the same processsor core (i.e. the same proce
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="menus.html" class="btn btn-neutral float-right" title="Adding Menus and Menu Items" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="using_gui.html" class="btn btn-neutral float-right" title="Using the Default GUI" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
