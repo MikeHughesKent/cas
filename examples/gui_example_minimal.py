@@ -9,15 +9,19 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 
-import context    # Adds paths
+# Check for a context.py file in folder which adds paths. This is needed
+# if cas_gui wasn't pip installed to tell Python where the install is, in which case
+# edit (or create) context.py with the path to the src folder of your copy of cas_gui.
+try: 
+    import context
+except: 
+    pass  
 
 from cas_gui.base import CAS_GUI
 
 
 class example_GUI(CAS_GUI):
-    resPath = "..\\res"     
-    sourceFilename = r"data/vid_example.tif"  
-    
+    pass
     
 if __name__ == '__main__':    
            

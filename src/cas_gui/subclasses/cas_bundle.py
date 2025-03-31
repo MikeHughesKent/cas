@@ -1,25 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Kent-CAS-GUI Bundle Class
-Camera Acquisition System (CAS) GUI Class for developing GUIs that acquire
-images through fibre bundles.
+A graphical user interface for working with fibre bundle imaging.
 
-CAS_GUI is a graphical user interface built around the 
-Kent Camera Acquisition System (CAS).
+Built on CAS-GUI.
 
-While it can be used stand-aline, it is intended as a base class to be
-extended by more complete programs that provide further functionality.
-
-@author: Mike Hughes, Applied Optics Group, University of Kent
 """
 
 import sys 
 
 # If PyFibreBundle is not on your path, add the path here:
 sys.path.append(r'..\\..\\pyfibrebundle\\src')
-sys.path.append(r'..\\src')   # So that it find the cas_gui module that we are inside!
-sys.path.append(r'..\\src\\cas_gui')   # So that it find the cas_gui module that we are inside!
-
+#sys.path.append(r'..\\src')             # So that it find the cas_gui module that we are inside!
+sys.path.append(r"..\\")   # So that it find the cas_gui module that we are inside!
 
 import os
 import time
@@ -42,15 +34,13 @@ import cv2 as cv
 
 sys.path.append(r'..\\..\\')  
 
-
 from cas_gui.base import CAS_GUI
 
-from cas_gui.threads.image_acquisition_thread import ImageAcquisitionThread
-from cas_gui.widgets.image_display import ImageDisplay
-from cas_gui.threads.bundle_processor import BundleProcessor
+from threads.image_acquisition_thread import ImageAcquisitionThread
+from widgets.image_display import ImageDisplay
+from threads.bundle_processor import BundleProcessor
 
 import pybundle
-
 
 class CAS_GUI_Bundle(CAS_GUI):
     
@@ -66,7 +56,6 @@ class CAS_GUI_Bundle(CAS_GUI):
     
     resPath = "..\\..\\..\\res"
     sourceFilename = r"..\..\..\tests\test_data\im1.tif"
-
 
 
     def __init__(self, parent=None):                      

@@ -25,11 +25,12 @@ import multiprocessing as mp
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PyQt5 import QtGui, QtCore, QtWidgets   
+from PyQt5 import QtGui, QtCore, QtWidgets 
+  
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QIcon, QPalette, QColor, QImage, QPixmap, QPainter, QPen, QGuiApplication
+from PyQt5.QtGui import QTextOption, QIcon, QPalette, QColor, QImage, QPixmap, QPainter, QPen, QGuiApplication
 from PyQt5.QtGui import QPainter, QBrush, QPen
 from PyQt5.QtXml import QDomDocument, QDomElement
 
@@ -69,11 +70,11 @@ class CAS_GUI(QMainWindow):
     appName = "CAS"
 
     # Locations for icons etc. 
-    resPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'res'))
+    resPath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'res'))
     logoFilename = None
     iconFilename = 'logo_256_red.png'
-    studyRoot = "../../studies"
-    studyPath = "../../studies/default"
+    studyRoot = "studies"
+    studyPath = "studies/default"
     studyName = "default"
             
 
@@ -87,8 +88,8 @@ class CAS_GUI(QMainWindow):
     sharedMemoryArraySize = (2048,2048)
 
     # Default source for simulated camera
-    sourceFilename = Path('../../examples/data/vid_example.tif')  
-    
+    sourceFilename = os.path.abspath(os.path.join(os.path.dirname(__file__), 'example_data/vid_example.tif'))
+
     # The size of the queue for raw images from the camera. If this is exceeded
     # then the oldest image will be removed.
     rawImageBufferSize = 10
@@ -221,7 +222,7 @@ class CAS_GUI(QMainWindow):
         if len(self.camNames) == 0:
             camNames = ['File', 'Simulated Camera', 'Webcam', 'Colour Webcam']
             camSources = ['ProcessorInterface', 'SimulatedCamera', 'WebCamera', 'WebCameraColour']
-            camTypes = [FILE_TYPE, SIM_TYPE, REAL_TYPE, REAL_TYPE]
+            camTypes = [self.FILE_TYPE, self.SIM_TYPE, self.REAL_TYPE, self.REAL_TYPE]
 
 
 
@@ -254,7 +255,7 @@ class CAS_GUI(QMainWindow):
         self.layout.addWidget(self.menuPanel)        
         
         # Add Main Menu Buttons
-        self.studyMenuButton = self.create_menu_button("New Study", QIcon(os.path.join(self.resPath, 'study_white.svg')), self.study_menu_clicked, False, False, position = 0)
+        self.studyMenuButton = self.create_menu_button("New Study", QIcon(os.path.join(self.resPath, 'icons', 'study_white.svg')), self.study_menu_clicked, False, False, position = 0)
         self.liveButton = self.create_menu_button("Live Imaging", QIcon(os.path.join(self.resPath, 'icons', 'play_white.svg')), self.live_button_clicked, True)
         self.sourceButton = self.create_menu_button("Image Source", QIcon(os.path.join(self.resPath, 'icons', 'camera_white.svg')), self.source_button_clicked, True, menuButton = True)
         self.snapButton = self.create_menu_button("Snap Image", QIcon(os.path.join(self.resPath, 'icons', 'download_white.svg')), self.snap_button_clicked, False )
@@ -590,6 +591,7 @@ class CAS_GUI(QMainWindow):
         
         self.filename_label = QLabel()
         self.filename_label.setWordWrap(True)
+        #self.filename_label.setWordWrapMode(QTextOption.WrapAnywhere)
         self.filename_label.setProperty("status", "true")
         inputFileLayout.addWidget(self.filename_label)
         

@@ -1,0 +1,7 @@
+<!DOCTYPE RCC><RCC version="1.0">
+  <qresource>
+    <file>toggle_grey.png</file>
+    <file>toggle_blue.png</file>
+    <file>toggle_disable.png</file>
+  </qresource>
+</RCC>

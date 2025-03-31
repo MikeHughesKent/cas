@@ -1,0 +1,150 @@
+QWidget{background-color:rgb(60, 60, 90)}
+
+QWidget#main_widget{background-color:rgba(0,0,0,255)}
+
+QWidget#menu_panel > QPushButton{ background-color: rgba(255, 255, 255, 0);
+             color:white;
+             border: 0px;
+             font-size: 12pt;
+             icon-size: 26px;
+             padding: 10px;
+             min-height: 50px;
+             text-align: left
+}
+
+QWidget#contentPanel{
+             background-color:rgba(0,0,255,255)
+}
+
+
+QScrollArea { 
+             background-color: rgba(30, 30, 60, 255); 
+             padding:0px; 
+             border:0px
+}
+
+
+
+QScrollArea > QWidget > scrollareaContent { background-color: rgb(140,140,140); }
+
+QPushButton { background-color: rgba(31, 105, 166, 255);
+             padding: 8px;
+             color: white;
+             font-size:9pt;}
+            
+QCheckBox {
+            font-size:9pt;
+            color:white
+}
+
+QCheckBox::indicator:unchecked {
+            width:60px;
+            height:60px;
+            image: url(:/toggle_grey.png)
+}
+
+QCheckBox::indicator:checked {
+            width:60px;
+            height:30px;
+            image: url(:/toggle_blue.png)
+}
+
+
+
+
+
+QSpinBox{   
+            background-color: rgba(255, 255, 255, 255);
+            padding: 4px;
+            color: black;
+            font-size:9pt;}
+            
+QPushButton:disabled {
+    background-color:#404040;
+}
+ 
+ 
+QDoubleSpinBox{
+            background-color: rgba(255, 255, 255, 1);
+            padding: 4px;
+            color: black;
+            font-size:9pt;
+}
+
+QDoubleSpinBox:disabled {
+    background-color: rgba(230, 230, 230, 1); /* Light gray background for disabled state */
+    color: gray; /* Gray text for disabled state */
+}
+
+QComboBox { 
+            padding: 4px; 
+            font-size: 9pt;
+            background-color:white;
+            color: black;
+            padding: 6px;
+            margin-bottom: 5px;            
+}
+
+QWidget#menu_panel > QPushButton:hover { background-color: rgba(255, 255, 255, 60) }
+
+QWidget#menu_panel > QPushButton:checked { background-color: rgba(255, 255, 255, 120) }
+
+
+QWidget#menu_panel    {background-color: rgba(30, 30, 60, 255);
+                       padding: 0px}
+                    
+QWidget#options_panel {background-color: rgba(0,0,0,255);
+                       padding: 0px; 
+                       margin: 0px}   
+                   
+
+QWidget#content_panel { background-color: rgba(0,0,0,255)}    
+            
+                    
+
+
+                    
+QLabel{                color:white;
+                       font-size:9pt;
+                       padding-top: 4px;
+                       padding-bottom: 4px;}    
+    
+QLabel[header="true"] {
+                       color:white;
+                       qproperty-indent:0;
+                       font-size:14pt;
+                       padding-top:10px;
+                       padding-bottom: 10px;
+                       margin-left: 0px
+}                  
+                    
+QLabel[subheader="true"] {
+                       color:white;
+                       qproperty-indent:0;
+                       font-size:12pt;
+                       padding-top:10px;
+                       padding-bottom: 10px;
+                       margin-left: 0px;
+}       
+
+QLabel[status="true"] {
+                       background-color: rgba(40,40,40,255);
+                       color:white;
+                       qproperty-indent:0;
+                       padding-top:10px;
+                       padding-bottom: 10px;
+                       padding-left: 5px;
+                       padding-right: 5px;
+                       margin-left: 0px;
+                       border: 1px solid black;
+
+}        
+
+QLineEdit           {  background-color: rgba(40,40,40,255);
+                       font-size:11pt;
+                       color:white} 
+
+QPlainTextEdit      {  background-color: rgba(40,40,40,255);
+                       font-size:11pt;
+                       color:white} 
+       

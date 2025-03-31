@@ -1,0 +1,7 @@
+File, ProcessorInterface, 0
+Simulated Camera, SimulatedCamera, 2
+Flea Camera, FleaCameraInterface, 1
+Kiralux, KiraluxCamera, 1
+Thorlabs DCX, DCXCameraInterface, 1
+Webcam, WebCamera, 1
+Colour Webcam, WebCameraColour, 1

@@ -1,0 +1,9 @@
+matplotlib>=3.8
+numpy>=1.26
+opencv_python>=4.9
+Pillow>=10.3
+scipy>=1.13
+pyqt5>=5.14
+magicattr>=0.1.6
+
+
