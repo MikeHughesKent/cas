@@ -1,14 +1,14 @@
 ---------------
 Installation
 ---------------
+The source is available to `download from Github <http://www.github.com/MikeHughesKent/cas>`_, or
+install the latest stable release from PyPI using::
 
-Install the latest stable release from PyPI using::
-
-    pip install cas 
+    pip install cas_gui
 
 Using pip install should find and install all the dependencies. 
 
-Note that the pip install doesn't include the examples and tests which still 
+Note that the pip install doesn't include the examples 
 need to be `downloaded from Github <http://www.github.com/MikeHughesKent/cas>`_.
 
 If manually downloading the source from Github, rather than from PyPI, you will need to 
