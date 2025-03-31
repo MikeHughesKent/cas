@@ -9,7 +9,7 @@ processing images from cameras or camera-like systems.
 
 
 
-![Screenshot of CAS GUI interface](screenshots/cas_screenshot3.png)
+![Screenshot of CAS GUI interface](https://github.com/MikeHughesKent/cas/blob/main/screenshots/cas_screenshot3.png)
 
 GUIs are built using PyQt5. Images are displayed using an instance of 
 [ImageDisplayQT](https://www.github.com/mikehugheskent/imagedisplayqt), a widget 
