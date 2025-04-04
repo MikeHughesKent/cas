@@ -1,0 +1,37 @@
+# pyproject.toml
+
+[build-system]
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "CAS-GUI"
+version = "1.0.2"
+description = "Python package for creating imaging system GUIs."
+readme = "README.md"
+authors = [{ name = "Michael Hughes", email = "m.r.hughes@kent.ac.uk" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["GUI", "imaging", "camera"]
+dependencies = [
+    "matplotlib>=3.8",
+    "numpy>=1.26",
+    "opencv_python>=4.9",
+    "Pillow>=10.3",
+    "scipy>=1.13",
+    "pyqt5>=5.15",
+    "magicattr>=0.1.6"
+]
+requires-python = ">=3.10"
+
+[project.urls]
+Homepage = "https://github.com/MikeHughesKent/CAS/"
+
+[tool.setuptools.package-data]
+"cas_gui" = ["res/**", "res/icons", "res/icons*", "studies**", "studies/default/*", "example_data/*"]
+
+
