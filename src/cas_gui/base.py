@@ -189,7 +189,8 @@ class CAS_GUI(QMainWindow):
         
     def apply_default_settings(self):
         """ Overload this function in sub-class to provide defaults"""
-        pass
+        self.frameRateInput.setValue(30)
+        self.camSourceCombo.setCurrentIndex(1)
     
     
     def load_camera_names(self):

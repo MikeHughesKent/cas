@@ -139,7 +139,7 @@ class ImageProcessorProcess(multiprocessing.Process):
                     
                     
                     elif self.useSharedMemory:
-                        print("using shared memory")
+                        #print("using shared memory")
                         if outImage is not None:
   
                             # Create the shared memory if we haven't already done so
