@@ -218,12 +218,13 @@ class CAS_GUI(QMainWindow):
                     self.camNames.append(str.strip(parts[0]))
                     self.camSources.append(str.strip(parts[1]))
                     self.camTypes.append(int(parts[2]))
+                    print(self.camNames)
 
         # Otherwise use the defaults:
         if len(self.camNames) == 0:
-            camNames = ['File', 'Simulated Camera', 'Webcam', 'Colour Webcam']
-            camSources = ['ProcessorInterface', 'SimulatedCamera', 'WebCamera', 'WebCameraColour']
-            camTypes = [self.FILE_TYPE, self.SIM_TYPE, self.REAL_TYPE, self.REAL_TYPE]
+            self.camNames = ['File', 'Simulated Camera', 'Webcam', 'Colour Webcam']
+            self.camSources = ['ProcessorInterface', 'SimulatedCamera', 'WebCamera', 'WebCameraColour']
+            self.camTypes = [self.FILE_TYPE, self.SIM_TYPE, self.REAL_TYPE, self.REAL_TYPE]
 
 
 
@@ -788,7 +789,6 @@ class CAS_GUI(QMainWindow):
         """ If a processor has been defined, create an ImageProcessor thread
         and pass the details of the processor.
         """
-        
         if self.processor is not None:
            
             # Create the processor
@@ -1719,9 +1719,7 @@ class CAS_GUI(QMainWindow):
               index = obj.findText(value)  # get the corresponding index for specified string in combobox
     
               if index == -1:  # add to list if not found
-                  obj.insertItems(0, [value])
-                  index = obj.findText(value)
-                  obj.setCurrentIndex(index)
+                  pass
               else:
                   obj.setCurrentIndex(index)  # preselect a combobox value by index
     

@@ -12,6 +12,8 @@ import sys
 
 import os
 
+sys.path.append(r"../../")
+
 path = os.path.split(__file__)[0] + r"\thorlab"
 sys.path.append(path)
 
@@ -36,6 +38,7 @@ class KiraluxCamera(GenericCameraInterface):
         
     def open_camera(self, camNum):
         cameraList = self.sdk.discover_available_cameras()
+        print(cameraList)
         self.camera = self.sdk.open_camera(cameraList[camNum]) 
         self.camera.frames_per_trigger_zero_for_unlimited = 0
         self.camera.arm(2)
@@ -122,4 +125,4 @@ class KiraluxCamera(GenericCameraInterface):
         
 
 if __name__ == "__main__":
-    print("Test mode not implemented")
+    cam = KiraluxCamera()
