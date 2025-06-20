@@ -218,7 +218,6 @@ class CAS_GUI(QMainWindow):
                     self.camNames.append(str.strip(parts[0]))
                     self.camSources.append(str.strip(parts[1]))
                     self.camTypes.append(int(parts[2]))
-                    print(self.camNames)
 
         # Otherwise use the defaults:
         if len(self.camNames) == 0:
