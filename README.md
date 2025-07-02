@@ -3,7 +3,7 @@
 CAS GUI is a framework for rapidly building imaging system GUIs in Python. Originally
 designed for use in an optical imaging reseach in [Mike Hughes' lab](https://research.kent.ac.uk/applied-optics/hughes) 
 in the [Applied Optics Group](https://research.kent.ac.uk/applied-optics/), 
-University of Kent, it could be used to help
+University of Kent, it can be used to help
 develop GUIs for a wide range of applications which involve capturing and
 processing images from cameras or camera-like systems.
 
@@ -13,14 +13,13 @@ processing images from cameras or camera-like systems.
 
 GUIs are built using PyQt5. Images are displayed using an instance of 
 [ImageDisplayQT](https://www.github.com/mikehugheskent/imagedisplayqt), a widget 
-for displaying scientific images.
-
-
+for displaying scientific images. To create your own GUI, you simple subclass the base class of CAS GUI and define your own image processing function. 
+There are helper functions for creating additional menus or image displays. You can customise as much as you want by over-riding other methods.
 
 
 ## Documentation and Examples
 
-Documentation is on [readthedocs](https://cas-gui.readthedocs.io/en/latest/).
+Full documentation is on [readthedocs](https://cas-gui.readthedocs.io/en/latest/).
 
 Simple examples of GUIs can be found in the [examples folder](https://github.com/MikeHughesKent/cas/tree/main/examples)
 
