@@ -568,7 +568,7 @@ class ImageDisplay(QLabel):
            w,h = self.screen_dims(overlay.x2, overlay.y2)
            
            if overlay.overlayType == self.ELLIPSE:    
-               painter.drawEllipse(x,y,w,h)
+               painter.drawEllipse(x - w//2,y - h//2,w,h)
            elif overlay.overlayType == self.RECTANGLE:
                painter.drawRect(x,y,w,h)
            elif overlay.overlayType == self.POINT:

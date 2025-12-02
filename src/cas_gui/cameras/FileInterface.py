@@ -7,7 +7,7 @@ from a file (single or stack).
 
 """
 import time
-
+import os
 from PIL import Image, ImageSequence
 import numpy as np
 
@@ -30,12 +30,18 @@ class FileInterface(GenericCameraInterface):
         self.lastImageTime = time.perf_counter()
         self.fps = 30
         self.frameRateEnabled = False
-
         if self.filename is not None:
             try:
-                self.dataset = Image.open(self.filename)
-                self.fileOpen = True
-                self.stack = None
+                if os.path.splitext(self.filename)[1] == '.npy': 
+                    self.is_array = True
+                    data = np.load(self.filename)
+                    self.stack = data
+                    self.fileOpen = True
+                else:
+                    self.is_array = False
+                    self.dataset = Image.open(self.filename)
+                    self.fileOpen = True
+                    self.stack = None
             except:
                 self.fileOpen = False
                 return None
@@ -71,19 +77,23 @@ class FileInterface(GenericCameraInterface):
         """ Get the desired image from the file.
         """
 
+        
         # If we have already loaded this image, just return it
         if self.currentImageIdx == self.lastImageIdx:
             return self.lastImage
+        
+        if self.is_array:
+           imData = self.stack[self.currentImageIdx]     
             
-        # Otherwise jump to desired image (if it is a stack)
-        self.dataset.seek(self.currentImageIdx)
-        imData = np.asarray(self.dataset)
+        else:
+            # Otherwise jump to desired image (if it is a stack)
+            self.dataset.seek(self.currentImageIdx)
+            imData = np.asarray(self.dataset)
 
        
         # Store this image in lastImage
         self.lastImage = imData
         self.lastImageIdx = self.currentImageIdx
-
        
         return imData
     
@@ -118,8 +128,11 @@ class FileInterface(GenericCameraInterface):
         """ If the file contains multiple frames, returns the number of frames.
         Will return 1 if a singe image.
         """
-        if self.dataset is not None:
-            return self.dataset.n_frames
+        if self.is_array:
+            return np.shape(self.stack)[0]
+        else:
+            if self.dataset is not None:
+                return self.dataset.n_frames
         
     
     ###### Frame Rate

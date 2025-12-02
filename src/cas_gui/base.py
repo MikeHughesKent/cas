@@ -50,6 +50,8 @@ from cas_gui.cameras.FileInterface import FileInterface
 from cas_gui.utils.im_tools import to8bit, to16bit
 from cas_gui.widgets.label_checkbox_widget import LabelCheckboxWidget    
 from cas_gui.widgets.range_spin_box import RangeSpinBox
+from cas_gui.widgets.label_doublespin_widget import LabelDoubleSpinWidget
+
 
 
 class CAS_GUI(QMainWindow):
@@ -58,7 +60,9 @@ class CAS_GUI(QMainWindow):
     REAL_TYPE = 1
     SIM_TYPE = 2
     TIF = 0
-    AVI = 1    
+    AVI = 1
+    REG = 0    
+    INI = 1
    
     # Window Appearance
     windowTitle = "Camera Acquisition System"
@@ -80,6 +84,7 @@ class CAS_GUI(QMainWindow):
 
     # Other Options
     restoreGUI = True         # True to load widget values from registry
+    restoreMethod = REG
     fallBackToRaw = True      # True to display raw images if no processed images
     multiCore = False         # True to run processing on a different core
     sharedMemory = False      # True to use shared memory to transfer processed image when using multiCore
@@ -126,6 +131,7 @@ class CAS_GUI(QMainWindow):
     recordBuffer = []
     imageId = 0
     camFile = f"../res/cameras.csv"
+    settingsPosition = None
     
     def __init__(self, parent = None):   
         """ Initial setup of GUI.
@@ -157,7 +163,11 @@ class CAS_GUI(QMainWindow):
         self.apply_default_settings()      
     
         # Load last values for GUI from registry
-        self.settings = QtCore.QSettings(self.authorName, self.appName)  
+        if self.restoreMethod == self.REG:
+            self.settings = QtCore.QSettings(self.authorName, self.appName)  
+        else:
+            self.settings = QtCore.QSettings("config.ini", QtCore.QSettings.IniFormat)
+
         if self.restoreGUI:
             self.gui_restore()
             
@@ -262,7 +272,7 @@ class CAS_GUI(QMainWindow):
         self.snapButton = self.create_menu_button("Snap Image", QIcon(os.path.join(self.resPath, 'icons', 'download_white.svg')), self.snap_button_clicked, False )
         self.saveAsButton = self.create_menu_button("Save Image As", QIcon(os.path.join(self.resPath, 'icons', 'save_white.svg')), self.save_as_button_clicked, False)
         self.recordButton = self.create_menu_button("Record", QIcon(os.path.join(self.resPath, 'icons', 'film_white.svg')), self.record_button_clicked, True, menuButton = True)
-        self.settingsButton = self.create_menu_button("Settings", QIcon(os.path.join(self.resPath, 'icons', 'settings_white.svg')), self.settings_button_clicked, True, menuButton = True)
+        self.settingsButton = self.create_menu_button("Settings", QIcon(os.path.join(self.resPath, 'icons', 'settings_white.svg')), self.settings_button_clicked, True, menuButton = True, position = self.settingsPosition)
         self.menuLayout.addStretch()
         self.exitButton = self.create_menu_button("Exit", QIcon(os.path.join(self.resPath, 'icons', 'exit_white.svg')), self.exit_button_clicked, False)
 
@@ -592,6 +602,8 @@ class CAS_GUI(QMainWindow):
         
         self.filename_label = QLabel()
         self.filename_label.setWordWrap(True)
+        self.filename_label.setMaximumWidth(self.menuPanelSize - 50)  # or whatever your max width is
+
         #self.filename_label.setWordWrapMode(QTextOption.WrapAnywhere)
         self.filename_label.setProperty("status", "true")
         inputFileLayout.addWidget(self.filename_label)
@@ -928,7 +940,12 @@ class CAS_GUI(QMainWindow):
 
 
        elif self.currentImage is not None and self.fallBackToRaw:
-           self.mainDisplay.set_image(self.currentImage)   
+           if np.iscomplexobj(self.currentImage):
+               self.mainDisplay.set_image(np.abs(self.currentImage) )  
+           else:
+               self.mainDisplay.set_image(self.currentImage)   
+
+            
          
         
     def update_camera_status(self):
@@ -1192,6 +1209,14 @@ class CAS_GUI(QMainWindow):
         rawFile = os.path.join(self.studyPath, timestamp + '_raw.tif')
         procFile = os.path.join(self.studyPath, timestamp + '_proc.tif')
         backFile = os.path.join(self.studyPath, timestamp + '_back.tif')
+        
+        if not os.path.exists(self.studyPath):
+            #try:
+                os.makedirs(self.studyPath)
+            #except:
+            #    QMessageBox.about(self, "Error", f"Study save path does not exist and could not be created, path: {self.studyPath}")   
+
+                
 
         if self.currentImage is not None:
             self.save_image(self.currentImage, rawFile)             
@@ -1246,13 +1271,13 @@ class CAS_GUI(QMainWindow):
         Can be called using keyword argument to automatically load a file, useful for
         debugging.
 
-        Optioanl Keyword Arguments:
+        Optional Keyword Arguments:
             filename : str
                        Full path to file to load, including extension
         """
         
         if filename is None:
-            filename, filter = QFileDialog.getOpenFileName(parent=self, caption='Select file', filter='*.tif; *.png')
+            filename, filter = QFileDialog.getOpenFileName(parent=self, caption='Select file', filter='*.tif; *.png; *.npy; *.bmp')
         
         if filename != "":
             if self.camOpen:
@@ -1498,6 +1523,7 @@ class CAS_GUI(QMainWindow):
                     self.imageThread.set_auxillary_queue_size(self.recordBufferSize + 1)
             else:
                 QMessageBox.about(self, "Error", f"Images not being acquired.")
+                return
                     
         else:
             self.recordRaw = False
@@ -1698,7 +1724,14 @@ class CAS_GUI(QMainWindow):
               self.settings.setValue(name, value)
               name = obj.upper.objectName()
               value = obj.upper.value() 
-              self.settings.setValue(name, value)            
+              self.settings.setValue(name, value)   
+              
+                      
+          if isinstance(obj, LabelDoubleSpinWidget):
+             name = obj.spinbox.objectName()
+             value = obj.spinbox.value()
+             self.settings.setValue(name, value)   
+
     
 
     def gui_restore(self):
@@ -1777,6 +1810,13 @@ class CAS_GUI(QMainWindow):
              value = self.settings.value(name)  # get stored value from registry
              if value != None:
                  obj.upper.setValue(float(value) )
+                 
+          if isinstance(obj, LabelDoubleSpinWidget):
+             name = obj.spinbox.objectName()
+             value = self.settings.value(name)  # get stored value from registry
+             if value != None:
+                 obj.spinbox.setValue(float(value) )
+             
                                      
               
     
@@ -1891,7 +1931,10 @@ class CAS_GUI(QMainWindow):
         return np.array(frames)    
         
 
-        
+    def subheader(self, text):         
+         header = QLabel(text)
+         header.setProperty("subheader", "true")
+         return(header)
 
 class NewStudyDialog(QDialog):
     """ Dialog box to create a new study."
