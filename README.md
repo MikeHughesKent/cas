@@ -1,7 +1,7 @@
 # CAS and CAS GUI 
 
 CAS GUI is a framework for rapidly building imaging system GUIs in Python. Originally
-designed for use in an optical imaging reseach in [Mike Hughes' lab](https://research.kent.ac.uk/applied-optics/hughes) 
+designed for use in an optical imaging research in [Mike Hughes' lab](https://research.kent.ac.uk/applied-optics/hughes) 
 in the [Applied Optics Group](https://research.kent.ac.uk/applied-optics/), 
 University of Kent, it can be used to help
 develop GUIs for a wide range of applications which involve capturing and
